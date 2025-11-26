@@ -1,0 +1,280 @@
+/* ========================================
+   KHAIRAWANG DAIRY - Main CSS Entry
+   ======================================== */
+
+/* Import component and animation styles first */
+@import './components.css';
+@import './animations.css';
+
+/* Tailwind Base, Components, and Utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   Base Layer - Global Styles
+   ======================================== */
+@layer base {
+
+  /* Root variables */
+  :root {
+    --color-dark-brown: #201916;
+    --color-accent-orange: #FD7C44;
+    --color-cream: #F7EFDF;
+    --color-white: #FFFFFF;
+    --color-light-gray: #F5F5F5;
+    --color-success: #22C55E;
+    --color-error: #EF4444;
+    
+    --font-heading: 'Poppins', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    
+    --transition-fast: 150ms;
+    --transition-normal: 250ms;
+    --transition-slow: 350ms;
+  }
+
+  /* HTML and Body */
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-body text-dark-brown bg-cream antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold text-dark-brown;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+
+  h6 {
+    @apply text-base md:text-lg;
+  }
+
+  /* Paragraphs */
+  p {
+    @apply text-base leading-relaxed;
+  }
+
+  /* Links */
+  a {
+    @apply text-accent-orange transition-colors duration-250 hover:text-dark-brown;
+  }
+
+  /* Focus states for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent-orange ring-offset-2 ring-offset-cream;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-accent-orange text-white;
+  }
+
+  /* Images */
+  img {
+    @apply max-w-full h-auto;
+  }
+}
+
+/* ========================================
+   Component Layer - Reusable Components
+   ======================================== */
+@layer components {
+  /* Container */
+  .container-dairy {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-3 font-poppins font-medium text-base rounded-xl transition-all duration-250 ease-smooth;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-orange text-white shadow-button;
+    @apply hover:bg-opacity-90 hover:shadow-button-hover hover:-translate-y-0.5;
+    @apply focus-visible:ring-accent-orange;
+  }
+
+  .btn-secondary {
+    @apply btn bg-transparent text-dark-brown border-2 border-dark-brown;
+    @apply hover:bg-dark-brown hover:text-white;
+    @apply focus-visible:ring-dark-brown;
+  }
+
+  .btn-outline {
+    @apply btn bg-transparent text-accent-orange border-2 border-accent-orange;
+    @apply hover:bg-accent-orange hover:text-white;
+    @apply focus-visible:ring-accent-orange;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-dark-brown;
+    @apply hover:bg-dark-brown hover:bg-opacity-10;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-2xl shadow-card overflow-hidden transition-all duration-300 ease-smooth;
+    @apply hover:shadow-card-hover hover:-translate-y-1;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  /* Form elements */
+  .input {
+    @apply w-full px-4 py-3 font-body text-base text-dark-brown bg-white rounded-xl border border-gray-200;
+    @apply transition-all duration-200 ease-smooth;
+    @apply placeholder:text-gray-400;
+    @apply focus:border-accent-orange focus:ring-2 focus:ring-accent-orange focus:ring-opacity-20 focus:outline-none;
+  }
+
+  .input-error {
+    @apply border-error-red focus:border-error-red focus:ring-error-red;
+  }
+
+  /* Section spacing */
+  .section {
+    @apply py-16 md:py-20 lg:py-24;
+  }
+
+  .section-heading {
+    @apply text-center mb-12 md:mb-16;
+  }
+
+  .section-title {
+    @apply font-heading font-bold text-dark-brown mb-4;
+  }
+
+  .section-subtitle {
+    @apply font-body text-lg text-gray-600 max-w-2xl mx-auto;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-accent-orange bg-opacity-10 text-accent-orange;
+  }
+
+  .badge-success {
+    @apply badge bg-success-green bg-opacity-10 text-success-green;
+  }
+
+  .badge-error {
+    @apply badge bg-error-red bg-opacity-10 text-error-red;
+  }
+}
+
+/* ========================================
+   Utilities Layer - Custom Utilities
+   ======================================== */
+@layer utilities {
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-orange to-dark-brown bg-clip-text text-transparent;
+  }
+
+  /* Animation delay utilities */
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+
+  /* Hover lift */
+  .hover-lift {
+    @apply transition-transform duration-300 ease-smooth;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-white bg-opacity-80 backdrop-blur-md;
+  }
+
+  /* Scroll snap */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+
+  .snap-start {
+    scroll-snap-align: start;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Aspect ratios */
+  .aspect-product {
+    aspect-ratio: 4 / 5;
+  }
+
+  .aspect-hero {
+    aspect-ratio: 16 / 9;
+  }
+}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KHAIRAWANG DAIRY - Premium fresh dairy products delivered from our farm to your table. Explore our collection of milk, cheese, yogurt, and more.">
+  <meta name="keywords" content="dairy, milk, cheese, yogurt, fresh, organic, farm, Nepal">
+  <meta name="author" content="KHAIRAWANG DAIRY">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="KHAIRAWANG DAIRY - Fresh From Farm To Table">
+  <meta property="og:description" content="Premium fresh dairy products delivered from our farm to your table.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥛</text></svg>">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/resources/css/app.css">
+  
+  <title>{{title}} - KHAIRAWANG DAIRY</title>
+</head>
+<body class="font-body text-dark-brown bg-cream antialiased">
+  <!-- Skip to main content for accessibility -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent-orange text-white px-4 py-2 rounded-lg z-50">
+    Skip to main content
+  </a>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-container">
+      <a href="/" class="navbar-logo text-white" aria-label="KHAIRAWANG DAIRY Home">
+        🥛 KHAIRAWANG DAIRY
+      </a>
+      
+      <div class="navbar-menu" role="menubar">
+        <a href="#home" class="navbar-link" role="menuitem">Home</a>
+        <a href="#products" class="navbar-link" role="menuitem">Products</a>
+        <a href="#about" class="navbar-link" role="menuitem">About</a>
+        <a href="#contact" class="navbar-link" role="menuitem">Contact</a>
+      </div>
+      
+      <div class="navbar-actions">
+        <a href="#shop" class="btn btn-primary btn-sm hidden sm:inline-flex">Shop Now</a>
+        <button class="navbar-toggle text-white" aria-label="Toggle menu" aria-expanded="false">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    {{content}}
+  </main>
+
+  <!-- Scripts -->
+  <script type="module">
+    // Navbar scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+
+    // Scroll-triggered animations
+    const animatedElements = document.querySelectorAll('[data-animate]');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animated');
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    });
+
+    animatedElements.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
