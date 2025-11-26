@@ -1,0 +1,42 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Storage & Cache
+/storage/cache/*
+/storage/logs/*
+!/storage/cache/.gitkeep
+!/storage/logs/.gitkeep
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/public/build/
+/public/hot
+
+# Uploaded files (should be managed separately)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Testing
+/coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# Misc
+*.log
+*.tmp
+*.bak
+.htpasswd
