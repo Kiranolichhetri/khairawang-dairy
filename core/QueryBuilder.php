@@ -750,12 +750,12 @@ class QueryBuilder
      */
     public function __clone(): void
     {
-        // Deep copy arrays
-        $this->joins = $this->joins;
-        $this->wheres = $this->wheres;
-        $this->bindings = $this->bindings;
-        $this->orderBy = $this->orderBy;
-        $this->groupBy = $this->groupBy;
-        $this->havings = $this->havings;
+        // Deep copy arrays to prevent shared references
+        $this->joins = array_map(fn($item) => $item, $this->joins);
+        $this->wheres = array_map(fn($item) => $item, $this->wheres);
+        $this->bindings = array_values($this->bindings);
+        $this->orderBy = array_values($this->orderBy);
+        $this->groupBy = array_values($this->groupBy);
+        $this->havings = array_map(fn($item) => $item, $this->havings);
     }
 }

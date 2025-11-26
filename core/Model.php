@@ -675,11 +675,28 @@ abstract class Model
      */
     protected function belongsTo(string $related, string $foreignKey = null, string $ownerKey = null): ?array
     {
-        $instance = new $related();
-        $foreignKey = $foreignKey ?? strtolower((new \ReflectionClass($related))->getShortName()) . '_id';
-        $ownerKey = $ownerKey ?? $instance::$primaryKey;
+        // Create instance to get table information
+        try {
+            $reflection = new \ReflectionClass($related);
+            if (!$reflection->isSubclassOf(Model::class)) {
+                throw new ModelException("Related class must extend Model: {$related}");
+            }
+            
+            // Get static properties without instantiation
+            $relatedTable = $reflection->getStaticPropertyValue('table');
+            if (empty($relatedTable)) {
+                // Generate table name from class name
+                $shortName = $reflection->getShortName();
+                $relatedTable = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $shortName)) . 's';
+            }
+            
+            $relatedPrimaryKey = $reflection->getStaticPropertyValue('primaryKey');
+        } catch (\ReflectionException $e) {
+            throw new ModelException("Unable to resolve relationship: {$related}");
+        }
         
-        $relatedTable = $instance->getTable();
+        $foreignKey = $foreignKey ?? strtolower($reflection->getShortName()) . '_id';
+        $ownerKey = $ownerKey ?? $relatedPrimaryKey;
         
         return self::db()
             ->table($relatedTable)

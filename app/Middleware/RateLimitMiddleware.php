@@ -200,9 +200,9 @@ class RateLimitMiddleware implements Middleware
      */
     private function getFileData(string $key): ?array
     {
-        $filePath = sys_get_temp_dir() . '/' . $key . '.rate';
+        $filePath = $this->getSecureFilePath($key);
         
-        if (!file_exists($filePath)) {
+        if ($filePath === null || !file_exists($filePath)) {
             return null;
         }
         
@@ -212,7 +212,14 @@ class RateLimitMiddleware implements Middleware
             return null;
         }
         
-        return json_decode($content, true);
+        $decoded = json_decode($content, true);
+        
+        // Validate data structure
+        if (!is_array($decoded) || !isset($decoded['attempts'], $decoded['reset_at'])) {
+            return null;
+        }
+        
+        return $decoded;
     }
 
     /**
@@ -222,8 +229,44 @@ class RateLimitMiddleware implements Middleware
      */
     private function setFileData(string $key, array $data): void
     {
-        $filePath = sys_get_temp_dir() . '/' . $key . '.rate';
+        $filePath = $this->getSecureFilePath($key);
+        
+        if ($filePath === null) {
+            return;
+        }
+        
         file_put_contents($filePath, json_encode($data), LOCK_EX);
+    }
+
+    /**
+     * Get secure file path for rate limit storage
+     * Ensures the key doesn't contain path traversal characters
+     */
+    private function getSecureFilePath(string $key): ?string
+    {
+        // Sanitize key to prevent directory traversal
+        $sanitizedKey = preg_replace('/[^a-zA-Z0-9_:-]/', '', $key);
+        
+        if (empty($sanitizedKey) || $sanitizedKey !== $key) {
+            return null;
+        }
+        
+        // Use application storage directory if available, otherwise temp directory
+        $app = Application::getInstance();
+        $storageDir = $app?->basePath('storage/cache') ?? sys_get_temp_dir();
+        
+        // Create rate limit subdirectory
+        $rateLimitDir = $storageDir . '/rate_limits';
+        if (!is_dir($rateLimitDir)) {
+            @mkdir($rateLimitDir, 0755, true);
+        }
+        
+        if (!is_writable($rateLimitDir)) {
+            // Fall back to temp directory
+            $rateLimitDir = sys_get_temp_dir();
+        }
+        
+        return $rateLimitDir . '/' . $sanitizedKey . '.rate';
     }
 
     /**

@@ -77,8 +77,16 @@ class View
             throw new \RuntimeException("View not found: {$template} ({$filePath})");
         }
         
-        // Extract data as variables
-        extract($data);
+        // Filter data keys to prevent reserved variable pollution
+        $reservedKeys = ['this', 'view', 'filePath', 'template', 'data', 'basePath', 'isLayout', '_ENV', '_SERVER', '_SESSION', '_COOKIE', '_GET', '_POST', '_FILES', '_REQUEST'];
+        $safeData = array_filter(
+            $data,
+            fn($key) => !in_array($key, $reservedKeys, true) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key),
+            ARRAY_FILTER_USE_KEY
+        );
+        
+        // Extract safe data as variables
+        extract($safeData, EXTR_SKIP);
         
         // Start output buffering
         ob_start();

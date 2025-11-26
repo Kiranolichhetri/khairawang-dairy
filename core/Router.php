@@ -260,9 +260,13 @@ class Router
         $method = $request->method();
         $uri = $request->path();
 
-        // Handle method override for forms
+        // Handle method override for forms (only allow specific methods)
         if ($method === 'POST' && $request->input('_method')) {
-            $method = strtoupper($request->input('_method'));
+            $overrideMethod = strtoupper($request->input('_method'));
+            // Only allow PUT, PATCH, DELETE method overrides
+            if (in_array($overrideMethod, ['PUT', 'PATCH', 'DELETE'], true)) {
+                $method = $overrideMethod;
+            }
         }
 
         // Try to match a route
