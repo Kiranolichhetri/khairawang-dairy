@@ -2,7 +2,7 @@
    KHAIRAWANG DAIRY - Main CSS Entry
    ======================================== */
 
-/* Import component and animation styles first */
+/* Import component and animation styles (must precede @tailwind) */
 @import './components.css';
 @import './animations.css';
 
