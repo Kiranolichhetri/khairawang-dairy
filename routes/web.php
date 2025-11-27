@@ -31,6 +31,11 @@ use App\Controllers\Admin\OrderController as AdminOrderController;
 use App\Controllers\Admin\UserController as AdminUserController;
 use App\Controllers\Admin\ReportController as AdminReportController;
 use App\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Controllers\ContactController;
+use App\Controllers\NewsletterController;
+use App\Controllers\NotificationController;
+use App\Controllers\Admin\NewsletterController as AdminNewsletterController;
+use App\Controllers\Admin\ContactController as AdminContactController;
 
 /** @var Router $router */
 
@@ -143,6 +148,14 @@ $router->group(['prefix' => '/account', 'middleware' => [\App\Middleware\AuthMid
     $router->post('/orders/{orderNumber}/cancel', [AccountOrderController::class, 'cancel'], 'account.orders.cancel');
     $router->post('/orders/{orderNumber}/reorder', [AccountOrderController::class, 'reorder'], 'account.orders.reorder');
     $router->get('/orders/{orderNumber}/invoice', [AccountOrderController::class, 'downloadInvoice'], 'account.orders.invoice');
+    
+    // Notification Management
+    $router->get('/notifications', [NotificationController::class, 'index'], 'account.notifications');
+    $router->get('/notifications/preferences', [NotificationController::class, 'preferences'], 'account.notifications.preferences');
+    $router->post('/notifications/preferences', [NotificationController::class, 'updatePreferences'], 'account.notifications.preferences.update');
+    $router->post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'], 'account.notifications.read-all');
+    $router->post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'], 'account.notifications.read');
+    $router->delete('/notifications/{id}', [NotificationController::class, 'delete'], 'account.notifications.delete');
 });
 
 // ==================================================
@@ -241,6 +254,23 @@ $router->group([
     $router->get('/reports/inventory', [AdminReportController::class, 'inventory'], 'admin.reports.inventory');
     $router->get('/reports/export/{type}', [AdminReportController::class, 'export'], 'admin.reports.export');
     
+    // Newsletter management
+    $router->get('/newsletter', [AdminNewsletterController::class, 'index'], 'admin.newsletter.index');
+    $router->get('/newsletter/export', [AdminNewsletterController::class, 'export'], 'admin.newsletter.export');
+    $router->delete('/newsletter/subscribers/{id}', [AdminNewsletterController::class, 'deleteSubscriber'], 'admin.newsletter.subscribers.delete');
+    $router->get('/newsletter/campaigns', [AdminNewsletterController::class, 'campaigns'], 'admin.newsletter.campaigns');
+    $router->get('/newsletter/campaigns/create', [AdminNewsletterController::class, 'createCampaign'], 'admin.newsletter.campaigns.create');
+    $router->post('/newsletter/campaigns', [AdminNewsletterController::class, 'storeCampaign'], 'admin.newsletter.campaigns.store');
+    $router->post('/newsletter/campaigns/{id}/send', [AdminNewsletterController::class, 'sendCampaign'], 'admin.newsletter.campaigns.send');
+    $router->delete('/newsletter/campaigns/{id}', [AdminNewsletterController::class, 'deleteCampaign'], 'admin.newsletter.campaigns.delete');
+    
+    // Contact inquiries management
+    $router->get('/contacts', [AdminContactController::class, 'index'], 'admin.contacts.index');
+    $router->get('/contacts/{id}', [AdminContactController::class, 'show'], 'admin.contacts.show');
+    $router->post('/contacts/{id}/reply', [AdminContactController::class, 'reply'], 'admin.contacts.reply');
+    $router->post('/contacts/{id}/resolve', [AdminContactController::class, 'resolve'], 'admin.contacts.resolve');
+    $router->delete('/contacts/{id}', [AdminContactController::class, 'delete'], 'admin.contacts.delete');
+    
     // Settings
     $router->get('/settings', [AdminSettingsController::class, 'index'], 'admin.settings.index');
     $router->post('/settings', [AdminSettingsController::class, 'update'], 'admin.settings.update');
@@ -255,13 +285,20 @@ $router->get('/about', function(Request $request) {
     return new Response('<h1>About KHAIRAWANG DAIRY</h1>');
 }, 'about');
 
-$router->get('/contact', function(Request $request) {
-    return new Response('<h1>Contact Us</h1>');
-}, 'contact');
+// ==================================================
+// Contact Routes
+// ==================================================
 
-$router->post('/contact', function(Request $request) {
-    return Response::json(['message' => 'Message sent']);
-}, 'contact.post');
+$router->get('/contact', [ContactController::class, 'show'], 'contact');
+$router->post('/contact', [ContactController::class, 'submit'], 'contact.submit');
+$router->get('/contact/thank-you', [ContactController::class, 'thankYou'], 'contact.thank-you');
+
+// ==================================================
+// Newsletter Routes
+// ==================================================
+
+$router->post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'], 'newsletter.subscribe');
+$router->get('/newsletter/unsubscribe/{token}', [NewsletterController::class, 'unsubscribe'], 'newsletter.unsubscribe');
 
 $router->get('/terms', function(Request $request) {
     return new Response('<h1>Terms & Conditions</h1>');
