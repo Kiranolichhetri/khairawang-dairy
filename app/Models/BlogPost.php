@@ -313,14 +313,20 @@ class BlogPost extends Model
      */
     public static function search(string $query, int $limit = 10): array
     {
-        $searchTerm = '%' . $query . '%';
+        // Escape special characters for LIKE queries
+        $escapedQuery = addcslashes($query, '%_');
+        $searchTerm = '%' . $escapedQuery . '%';
         
-        $rows = static::query()
-            ->where('status', self::STATUS_PUBLISHED)
-            ->whereRaw("(title_en LIKE '{$searchTerm}' OR title_ne LIKE '{$searchTerm}' OR content_en LIKE '{$searchTerm}')")
-            ->orderBy('published_at', 'DESC')
-            ->limit($limit)
-            ->get();
+        // Use parameterized query to prevent SQL injection
+        $rows = self::db()->select(
+            "SELECT * FROM blog_posts 
+             WHERE status = ? 
+             AND published_at <= NOW()
+             AND (title_en LIKE ? OR title_ne LIKE ? OR content_en LIKE ?)
+             ORDER BY published_at DESC 
+             LIMIT ?",
+            [self::STATUS_PUBLISHED, $searchTerm, $searchTerm, $searchTerm, $limit]
+        );
         
         return array_map(fn($row) => static::hydrate($row), $rows);
     }

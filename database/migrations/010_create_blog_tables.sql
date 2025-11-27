@@ -51,11 +51,28 @@ ALTER TABLE `blog_posts`
     ADD COLUMN IF NOT EXISTS `views_count` INT UNSIGNED DEFAULT 0 AFTER `meta_keywords`;
 
 -- Add foreign key constraint for category if not exists
--- Note: This may fail if constraint already exists
-ALTER TABLE `blog_posts`
-    ADD CONSTRAINT `fk_blog_posts_category` 
-    FOREIGN KEY (`category_id`) REFERENCES `blog_categories`(`id`) 
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Using stored procedure to safely add constraint
+DROP PROCEDURE IF EXISTS add_blog_category_fk;
+DELIMITER //
+CREATE PROCEDURE add_blog_category_fk()
+BEGIN
+    DECLARE CONTINUE HANDLER FOR 1061 BEGIN END;
+    DECLARE CONTINUE HANDLER FOR 1062 BEGIN END;
+    DECLARE CONTINUE HANDLER FOR 1005 BEGIN END;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.TABLE_CONSTRAINTS 
+        WHERE CONSTRAINT_NAME = 'fk_blog_posts_category'
+        AND TABLE_NAME = 'blog_posts'
+    ) THEN
+        ALTER TABLE `blog_posts`
+            ADD CONSTRAINT `fk_blog_posts_category` 
+            FOREIGN KEY (`category_id`) REFERENCES `blog_categories`(`id`) 
+            ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END //
+DELIMITER ;
+CALL add_blog_category_fk();
+DROP PROCEDURE IF EXISTS add_blog_category_fk;
 
 -- -----------------------------------------------------
 -- Table: blog_post_tags

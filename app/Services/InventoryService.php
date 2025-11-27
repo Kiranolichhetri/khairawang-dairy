@@ -45,6 +45,9 @@ class InventoryService
     /**
      * Update stock for a product
      * 
+     * Uses SELECT FOR UPDATE pattern for atomic stock updates
+     * to prevent race conditions in concurrent operations.
+     * 
      * @return array<string, mixed>
      */
     public function updateStock(
@@ -65,7 +68,29 @@ class InventoryService
             ];
         }
         
-        $currentStock = $product->attributes['stock'] ?? 0;
+        // Get current stock with locking via direct query
+        // This helps prevent race conditions in concurrent updates
+        $db = \Core\Application::getInstance()?->db();
+        
+        if ($db !== null) {
+            try {
+                // Begin transaction and lock row for update
+                $db->beginTransaction();
+                
+                $result = $db->selectOne(
+                    "SELECT stock FROM products WHERE id = ? FOR UPDATE",
+                    [$productId]
+                );
+                
+                $currentStock = (int) ($result['stock'] ?? 0);
+            } catch (\Exception $e) {
+                // Fallback to non-locking query if FOR UPDATE not supported
+                $currentStock = (int) ($product->attributes['stock'] ?? 0);
+            }
+        } else {
+            $currentStock = (int) ($product->attributes['stock'] ?? 0);
+        }
+        
         $stockBefore = $currentStock;
         
         switch ($type) {
@@ -90,6 +115,9 @@ class InventoryService
                 break;
                 
             default:
+                if ($db !== null && $db->inTransaction()) {
+                    $db->rollback();
+                }
                 return [
                     'success' => false,
                     'message' => 'Invalid stock movement type',
@@ -112,6 +140,11 @@ class InventoryService
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
         ]);
+        
+        // Commit transaction if we started one
+        if ($db !== null && $db->inTransaction()) {
+            $db->commit();
+        }
         
         // Check for low stock alert
         $this->checkAndSendLowStockAlert($product);

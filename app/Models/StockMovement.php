@@ -159,9 +159,14 @@ class StockMovement extends Model
         ?int $createdBy = null,
         ?string $referenceType = null,
         ?int $referenceId = null
-    ): self {
+    ): ?self {
         $product = Product::find($productId);
-        $stockBefore = $product ? ($product->attributes['stock'] ?? 0) : 0;
+        
+        if ($product === null) {
+            return null;
+        }
+        
+        $stockBefore = (int) ($product->attributes['stock'] ?? 0);
         $stockAfter = $stockBefore + $quantity;
         
         return static::create([
@@ -187,9 +192,14 @@ class StockMovement extends Model
         ?int $createdBy = null,
         ?string $referenceType = null,
         ?int $referenceId = null
-    ): self {
+    ): ?self {
         $product = Product::find($productId);
-        $stockBefore = $product ? ($product->attributes['stock'] ?? 0) : 0;
+        
+        if ($product === null) {
+            return null;
+        }
+        
+        $stockBefore = (int) ($product->attributes['stock'] ?? 0);
         $stockAfter = max(0, $stockBefore - $quantity);
         
         return static::create([
@@ -213,9 +223,14 @@ class StockMovement extends Model
         int $quantity,
         ?string $notes = null,
         ?int $createdBy = null
-    ): self {
+    ): ?self {
         $product = Product::find($productId);
-        $stockBefore = $product ? ($product->attributes['stock'] ?? 0) : 0;
+        
+        if ($product === null) {
+            return null;
+        }
+        
+        $stockBefore = (int) ($product->attributes['stock'] ?? 0);
         $stockAfter = $stockBefore + $quantity;
         
         return static::create([

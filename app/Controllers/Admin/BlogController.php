@@ -486,7 +486,17 @@ class BlogController
         ];
         
         $extension = $mimeToExt[$detectedMimeType] ?? 'jpg';
-        $filename = 'blog_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        
+        // Generate secure filename with fallback
+        try {
+            $randomPart = bin2hex(random_bytes(16));
+        } catch (\Exception $e) {
+            // Fallback to uniqid if random_bytes fails
+            $randomPart = uniqid('', true);
+            $randomPart = str_replace('.', '', $randomPart);
+        }
+        
+        $filename = 'blog_' . $randomPart . '.' . $extension;
         
         // Ensure upload directory exists
         $uploadDir = Application::getInstance()?->basePath('public/uploads/blog') ?? 'public/uploads/blog';
