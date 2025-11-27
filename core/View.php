@@ -47,16 +47,18 @@ class View
     {
         $this->layout = null;
         $this->sections = [];
+        $this->currentSection = null;
         
         // Merge shared data
         $data = array_merge($this->shared, $data);
         
-        // Render the template
+        // Render the template - sections are captured via section()/endSection() calls within the template
         $content = $this->renderTemplate($template, $data);
         
-        // If layout is set, render layout with content
+        // If layout is set, render layout with sections
         if ($this->layout !== null) {
-            if (!isset($this->sections['content'])) {
+            // Only use raw content if no section was defined or section is whitespace-only
+            if (!isset($this->sections['content']) || trim($this->sections['content']) === '') {
                 $this->sections['content'] = $content;
             }
             $content = $this->renderTemplate($this->layout, $data, true);
