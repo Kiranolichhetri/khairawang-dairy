@@ -15,6 +15,11 @@ class Address extends Model
 {
     protected static string $table = 'addresses';
     
+    /** Address type constants */
+    public const TYPE_SHIPPING = 'shipping';
+    public const TYPE_BILLING = 'billing';
+    public const TYPE_BOTH = 'both';
+    
     protected static array $fillable = [
         'user_id',
         'label',
@@ -86,14 +91,14 @@ class Address extends Model
     /**
      * Get user's default address
      */
-    public static function getDefault(int $userId, string $type = 'shipping'): ?self
+    public static function getDefault(int $userId, string $type = self::TYPE_SHIPPING): ?self
     {
         // Use raw query for complex OR conditions
         $data = self::db()->selectOne(
             "SELECT * FROM " . static::getTable() . " 
              WHERE user_id = ? AND is_default = 1 
-             AND (address_type = ? OR address_type = 'both')",
-            [$userId, $type]
+             AND (address_type = ? OR address_type = ?)",
+            [$userId, $type, self::TYPE_BOTH]
         );
         
         if ($data === null) {

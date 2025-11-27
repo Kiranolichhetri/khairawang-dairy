@@ -71,7 +71,7 @@
                    accept="image/*" 
                    multiple
                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-orange focus:border-transparent">
-            <p class="text-xs text-gray-500 mt-1">Max 5 images. JPG, PNG or WebP. Max 5MB each.</p>
+            <p class="text-xs text-gray-500 mt-1">Max 5 images. JPG, PNG, or WebP. Max 5MB each.</p>
         </div>
         
         <!-- Verified Purchase Badge -->

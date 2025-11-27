@@ -16,6 +16,9 @@ use Core\Database;
  */
 class WishlistService
 {
+    /** Default placeholder image for products */
+    private const PLACEHOLDER_IMAGE = '/assets/images/product-placeholder.png';
+    
     private ?Database $db = null;
     private CartService $cartService;
 
@@ -65,7 +68,7 @@ class WishlistService
                 'price' => $price,
                 'original_price' => $originalPrice,
                 'on_sale' => $item['sale_price'] !== null && $item['sale_price'] < $originalPrice,
-                'image' => !empty($images) ? '/uploads/products/' . $images[0] : '/assets/images/product-placeholder.png',
+                'image' => !empty($images) ? '/uploads/products/' . $images[0] : self::PLACEHOLDER_IMAGE,
                 'stock' => (int) $item['stock'],
                 'in_stock' => (int) $item['stock'] > 0,
                 'status' => $item['status'],

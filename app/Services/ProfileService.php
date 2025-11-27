@@ -185,7 +185,9 @@ class ProfileService
         // Create upload directory if not exists
         $uploadDir = Application::getInstance()?->basePath() . '/public/uploads/avatars';
         if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+            if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                return ['success' => false, 'message' => 'Failed to create upload directory'];
+            }
         }
         
         $destination = $uploadDir . '/' . $filename;

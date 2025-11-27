@@ -332,7 +332,10 @@ class ReviewService
         $uploadDir = Application::getInstance()?->basePath() . '/public/uploads/reviews';
         
         if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+            if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                // Directory creation failed, silently return
+                return;
+            }
         }
         
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
