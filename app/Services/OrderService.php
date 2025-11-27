@@ -58,15 +58,24 @@ class OrderService
             }
         }
         
-        // Validate email format
-        if (!filter_var($shippingData['email'], FILTER_VALIDATE_EMAIL)) {
+        // Validate email format with stricter validation
+        $email = $shippingData['email'];
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'message' => 'Invalid email address'];
         }
+        // Additional email validation: check for common typos and valid domain format
+        if (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
+            return ['success' => false, 'message' => 'Invalid email format'];
+        }
         
-        // Validate phone (basic validation for Nepal numbers)
+        // Validate phone (Nepal mobile numbers start with 98 or 97)
         $phone = preg_replace('/[^0-9]/', '', $shippingData['phone']);
-        if (strlen($phone) < 10) {
-            return ['success' => false, 'message' => 'Invalid phone number'];
+        if (strlen($phone) < 10 || strlen($phone) > 15) {
+            return ['success' => false, 'message' => 'Phone number must be 10-15 digits'];
+        }
+        // For Nepal, validate mobile number format
+        if (strlen($phone) === 10 && !preg_match('/^(98|97|96)[0-9]{8}$/', $phone)) {
+            return ['success' => false, 'message' => 'Invalid Nepal mobile number format'];
         }
         $shippingData['phone'] = $phone;
         

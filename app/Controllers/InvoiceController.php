@@ -114,8 +114,10 @@ class InvoiceController
         }
         
         // Guest can access order if email matches (for guest orders)
-        $userEmail = $session?->get('user')['email'] ?? null;
-        if ($userEmail !== null && $order->attributes['shipping_email'] === $userEmail) {
+        // Use hash_equals to prevent timing attacks
+        $userEmail = $session?->get('user')['email'] ?? '';
+        $orderEmail = $order->attributes['shipping_email'] ?? '';
+        if (!empty($userEmail) && !empty($orderEmail) && hash_equals($orderEmail, $userEmail)) {
             return true;
         }
         

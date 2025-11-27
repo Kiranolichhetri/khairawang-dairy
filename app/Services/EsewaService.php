@@ -57,6 +57,11 @@ class EsewaService
     ): array {
         $totalAmount = $amount + $taxAmount + $serviceCharge + $deliveryCharge;
         
+        // Validate secret key is configured for production mode
+        if (!$this->testMode && empty($this->secretKey)) {
+            throw new \RuntimeException('eSewa secret key is required for production mode');
+        }
+        
         // Generate signature for eSewa v2
         $signature = $this->generateSignature($totalAmount, $orderId);
         
@@ -88,7 +93,12 @@ class EsewaService
             return base64_encode(hash_hmac('sha256', $message, $this->secretKey, true));
         }
         
-        return '';
+        // In test mode, signature may be optional
+        if ($this->testMode) {
+            return '';
+        }
+        
+        throw new \RuntimeException('eSewa secret key is required for signature generation');
     }
 
     /**

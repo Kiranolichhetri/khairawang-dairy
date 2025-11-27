@@ -12,6 +12,7 @@ declare(strict_types=1);
 use Core\Router;
 use Core\Request;
 use Core\Response;
+use App\Models\Category;
 use App\Controllers\ProductController;
 use App\Controllers\CartController;
 use App\Controllers\CheckoutController;
@@ -36,7 +37,7 @@ $router->group(['prefix' => '/api/v1'], function(Router $router) {
     
     // Categories API
     $router->get('/categories', function(Request $request) {
-        $categories = \App\Models\Category::roots();
+        $categories = Category::roots();
         return Response::json([
             'success' => true,
             'data' => array_map(function($cat) {

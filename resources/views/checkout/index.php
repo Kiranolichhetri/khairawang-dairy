@@ -237,9 +237,19 @@ document.addEventListener('alpine:init', () => {
             
             if (!this.form.name.trim()) this.errors.name = 'Name is required';
             if (!this.form.email.trim()) this.errors.email = 'Email is required';
-            else if (!/^\S+@\S+\.\S+$/.test(this.form.email)) this.errors.email = 'Invalid email format';
+            else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(this.form.email)) this.errors.email = 'Invalid email format';
             if (!this.form.phone.trim()) this.errors.phone = 'Phone is required';
-            else if (!/^[0-9]{10,}$/.test(this.form.phone.replace(/[^0-9]/g, ''))) this.errors.phone = 'Invalid phone number';
+            else {
+                const phoneDigits = this.form.phone.replace(/[^0-9]/g, '');
+                // Validate Nepal mobile numbers (start with 98, 97, or 96)
+                if (phoneDigits.length === 10) {
+                    if (!/^(98|97|96)[0-9]{8}$/.test(phoneDigits)) {
+                        this.errors.phone = 'Invalid Nepal mobile number (must start with 98, 97, or 96)';
+                    }
+                } else if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+                    this.errors.phone = 'Phone number must be 10-15 digits';
+                }
+            }
             if (!this.form.address.trim()) this.errors.address = 'Address is required';
             if (!this.form.payment_method) this.errors.payment_method = 'Select payment method';
             
