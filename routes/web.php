@@ -99,17 +99,19 @@ $router->post('/cart/coupon/validate', [CouponController::class, 'validate'], 'c
 // Authentication Routes
 // ==================================================
 
-// Guest-only routes (login, register, forgot password)
-$router->group(['middleware' => [\App\Middleware\GuestMiddleware::class]], function(Router $router) {
-    $router->get('/login', [AuthController::class, 'showLogin'], 'login');
-    $router->post('/login', [AuthController::class, 'login'], 'login.post');
-    $router->get('/register', [AuthController::class, 'showRegister'], 'register');
-    $router->post('/register', [AuthController::class, 'register'], 'register.post');
-    $router->get('/forgot-password', [AuthController::class, 'showForgotPassword'], 'password.request');
-    $router->post('/forgot-password', [AuthController::class, 'forgotPassword'], 'password.email');
-    $router->get('/reset-password/{token}', [AuthController::class, 'showResetPassword'], 'password.reset');
-    $router->post('/reset-password', [AuthController::class, 'resetPassword'], 'password.update');
-});
+// Authentication Routes - accessible without middleware
+$router->get('/login', [AuthController::class, 'showLogin'], 'login');
+$router->post('/login', [AuthController::class, 'login'], 'login.post');
+$router->get('/register', [AuthController::class, 'showRegister'], 'register');
+$router->post('/register', [AuthController::class, 'register'], 'register.post');
+$router->get('/forgot-password', [AuthController::class, 'showForgotPassword'], 'password.request');
+$router->post('/forgot-password', [AuthController::class, 'forgotPassword'], 'password.email');
+$router->get('/reset-password/{token}', [AuthController::class, 'showResetPassword'], 'password.reset');
+$router->post('/reset-password', [AuthController::class, 'resetPassword'], 'password.update');
+
+// Google OAuth Routes
+$router->get('/auth/google', [AuthController::class, 'redirectToGoogle'], 'auth.google');
+$router->get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'], 'auth.google.callback');
 
 // Email verification (accessible always)
 $router->get('/verify-email/{token}', [AuthController::class, 'verifyEmail'], 'verification.verify');
