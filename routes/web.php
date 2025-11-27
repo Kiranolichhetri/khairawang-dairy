@@ -12,6 +12,12 @@ declare(strict_types=1);
 use Core\Router;
 use Core\Request;
 use Core\Response;
+use App\Controllers\ProductController;
+use App\Controllers\CartController;
+use App\Controllers\CheckoutController;
+use App\Controllers\OrderController;
+use App\Controllers\EsewaController;
+use App\Controllers\InvoiceController;
 
 /** @var Router $router */
 
@@ -32,32 +38,33 @@ $router->get('/health', function() {
     ]);
 }, 'health');
 
-// Products
-$router->get('/products', function(Request $request) {
-    return Response::json(['message' => 'Product listing']);
-}, 'products.index');
+// ==================================================
+// Product Routes
+// ==================================================
 
-$router->get('/products/{slug}', function(Request $request, string $slug) {
-    return Response::json(['message' => "Product: {$slug}"]);
-}, 'products.show');
+$router->get('/products', [ProductController::class, 'index'], 'products.index');
+$router->get('/products/search', [ProductController::class, 'search'], 'products.search');
+$router->get('/products/featured', [ProductController::class, 'featured'], 'products.featured');
+$router->get('/products/{slug}', [ProductController::class, 'show'], 'products.show');
 
 // Categories
 $router->get('/categories', function(Request $request) {
     return Response::json(['message' => 'Category listing']);
 }, 'categories.index');
 
-$router->get('/categories/{slug}', function(Request $request, string $slug) {
-    return Response::json(['message' => "Category: {$slug}"]);
-}, 'categories.show');
+$router->get('/categories/{slug}', [ProductController::class, 'category'], 'categories.show');
 
-// Cart
-$router->get('/cart', function(Request $request) {
-    return Response::json(['message' => 'Shopping cart']);
-}, 'cart.index');
+// ==================================================
+// Cart Routes
+// ==================================================
 
-$router->post('/cart/add', function(Request $request) {
-    return Response::json(['message' => 'Item added to cart']);
-}, 'cart.add');
+$router->get('/cart', [CartController::class, 'index'], 'cart.index');
+$router->post('/cart/add', [CartController::class, 'add'], 'cart.add');
+$router->put('/cart/update/{id}', [CartController::class, 'update'], 'cart.update');
+$router->delete('/cart/remove/{id}', [CartController::class, 'remove'], 'cart.remove');
+$router->delete('/cart/clear', [CartController::class, 'clear'], 'cart.clear');
+$router->post('/cart/sync', [CartController::class, 'sync'], 'cart.sync');
+$router->get('/cart/count', [CartController::class, 'count'], 'cart.count');
 
 // ==================================================
 // Authentication Routes
@@ -92,13 +99,10 @@ $router->group(['prefix' => '/account', 'middleware' => [\App\Middleware\AuthMid
         return Response::json(['message' => 'Account dashboard']);
     }, 'account.dashboard');
     
-    $router->get('/orders', function(Request $request) {
-        return Response::json(['message' => 'Order history']);
-    }, 'account.orders');
-    
-    $router->get('/orders/{id}', function(Request $request, string $id) {
-        return Response::json(['message' => "Order #{$id}"]);
-    }, 'account.orders.show');
+    $router->get('/orders', [OrderController::class, 'index'], 'account.orders');
+    $router->get('/orders/{orderNumber}', [OrderController::class, 'show'], 'account.orders.show');
+    $router->get('/orders/{orderNumber}/track', [OrderController::class, 'track'], 'account.orders.track');
+    $router->post('/orders/{orderNumber}/cancel', [OrderController::class, 'cancel'], 'account.orders.cancel');
     
     $router->get('/profile', function(Request $request) {
         return Response::json(['message' => 'Profile settings']);
@@ -114,17 +118,19 @@ $router->group(['prefix' => '/account', 'middleware' => [\App\Middleware\AuthMid
 // ==================================================
 
 $router->group(['prefix' => '/checkout'], function(Router $router) {
-    $router->get('/', function(Request $request) {
-        return Response::json(['message' => 'Checkout page']);
-    }, 'checkout.index');
-    
-    $router->post('/', function(Request $request) {
-        return Response::json(['message' => 'Order placed']);
-    }, 'checkout.process');
-    
-    $router->get('/success/{order}', function(Request $request, string $order) {
-        return Response::json(['message' => "Order {$order} confirmed"]);
-    }, 'checkout.success');
+    $router->get('/', [CheckoutController::class, 'index'], 'checkout.index');
+    $router->post('/', [CheckoutController::class, 'process'], 'checkout.process');
+    $router->get('/success/{orderNumber}', [CheckoutController::class, 'confirm'], 'checkout.success');
+    $router->get('/validate-stock', [CheckoutController::class, 'validateStock'], 'checkout.validate');
+    $router->get('/failed', function(Request $request) {
+        $error = $request->query('error', 'Payment failed');
+        $orderNumber = $request->query('order', '');
+        return Response::json([
+            'success' => false,
+            'message' => $error,
+            'order_number' => $orderNumber,
+        ]);
+    }, 'checkout.failed');
 });
 
 // ==================================================
@@ -211,3 +217,25 @@ $router->get('/terms', function(Request $request) {
 $router->get('/privacy', function(Request $request) {
     return new Response('<h1>Privacy Policy</h1>');
 }, 'privacy');
+
+// ==================================================
+// Payment Routes
+// ==================================================
+
+$router->group(['prefix' => '/payment'], function(Router $router) {
+    // eSewa payment
+    $router->post('/esewa/initiate', [EsewaController::class, 'initiate'], 'payment.esewa.initiate');
+    $router->get('/esewa/success', [EsewaController::class, 'success'], 'payment.esewa.success');
+    $router->get('/esewa/failure', [EsewaController::class, 'failure'], 'payment.esewa.failure');
+    $router->post('/esewa/verify', [EsewaController::class, 'verify'], 'payment.esewa.verify');
+    $router->get('/esewa/form', [EsewaController::class, 'form'], 'payment.esewa.form');
+});
+
+// ==================================================
+// Invoice Routes
+// ==================================================
+
+$router->group(['prefix' => '/invoice'], function(Router $router) {
+    $router->get('/{orderNumber}', [InvoiceController::class, 'view'], 'invoice.view');
+    $router->get('/{orderNumber}/download', [InvoiceController::class, 'download'], 'invoice.download');
+});
