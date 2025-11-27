@@ -29,11 +29,11 @@ use App\Controllers\InvoiceController;
 $router->group(['prefix' => '/api/v1'], function(Router $router) {
     
     // Products API
-    $router->get('/products', [ProductController::class, 'index'], 'api.products.index');
+    $router->get('/products', [ProductController::class, 'apiIndex'], 'api.products.index');
     $router->get('/products/search', [ProductController::class, 'search'], 'api.products.search');
     $router->get('/products/featured', [ProductController::class, 'featured'], 'api.products.featured');
     $router->get('/products/category/{slug}', [ProductController::class, 'category'], 'api.products.category');
-    $router->get('/products/{slug}', [ProductController::class, 'show'], 'api.products.show');
+    $router->get('/products/{slug}', [ProductController::class, 'apiShow'], 'api.products.show');
     
     // Categories API
     $router->get('/categories', function(Request $request) {
@@ -56,7 +56,7 @@ $router->group(['prefix' => '/api/v1'], function(Router $router) {
     $router->get('/categories/{slug}', [ProductController::class, 'category'], 'api.categories.show');
     
     // Cart API
-    $router->get('/cart', [CartController::class, 'index'], 'api.cart.index');
+    $router->get('/cart', [CartController::class, 'apiIndex'], 'api.cart.index');
     $router->post('/cart/items', [CartController::class, 'add'], 'api.cart.add');
     $router->put('/cart/items/{id}', [CartController::class, 'update'], 'api.cart.update');
     $router->delete('/cart/items/{id}', [CartController::class, 'remove'], 'api.cart.remove');

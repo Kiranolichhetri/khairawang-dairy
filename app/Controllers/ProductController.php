@@ -19,8 +19,22 @@ class ProductController
 {
     /**
      * List all products with pagination, filters, search
+     * 
+     * Renders the products listing HTML view.
+     * The view uses Alpine.js which fetches data from /api/v1/products.
      */
     public function index(Request $request): Response
+    {
+        return Response::view('products.index', [
+            'title' => 'Our Products',
+            'pageDescription' => 'Browse our collection of fresh dairy products from KHAIRAWANG DAIRY.',
+        ]);
+    }
+
+    /**
+     * API endpoint: List all products with pagination, filters, search (JSON)
+     */
+    public function apiIndex(Request $request): Response
     {
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 12)));
@@ -96,7 +110,7 @@ class ProductController
             'success' => true,
             'data' => [
                 'products' => $products,
-                'category' => $category ?  [
+                'category' => $category ? [
                     'id' => $category->getKey(),
                     'name' => $category->getName(),
                     'slug' => $category->attributes['slug'] ?? '',
@@ -121,12 +135,34 @@ class ProductController
 
     /**
      * Single product details
+     * 
+     * Renders the product detail HTML view.
+     * The view uses Alpine.js which fetches data from /api/v1/products/{slug}.
      */
     public function show(Request $request, string $slug): Response
     {
+        // Verify product exists before rendering view
         $product = Product::findBySlug($slug);
         
-        if ($product === null || ! $product->isPublished()) {
+        if ($product === null || !$product->isPublished()) {
+            return Response::error('Product not found', 404);
+        }
+        
+        return Response::view('products.show', [
+            'title' => $product->getName(),
+            'pageDescription' => $product->attributes['short_description'] ?? 'View product details at KHAIRAWANG DAIRY.',
+            'product' => $this->formatProductDetail($product),
+        ]);
+    }
+
+    /**
+     * API endpoint: Single product details (JSON)
+     */
+    public function apiShow(Request $request, string $slug): Response
+    {
+        $product = Product::findBySlug($slug);
+        
+        if ($product === null || !$product->isPublished()) {
             return Response::error('Product not found', 404);
         }
         
