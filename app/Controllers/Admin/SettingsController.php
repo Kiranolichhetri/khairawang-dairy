@@ -89,10 +89,18 @@ class SettingsController
             return Response::redirect('/admin/settings');
         }
         
+        // Get list of valid setting keys from database (whitelist approach)
+        $validSettings = $db->select("SELECT `key` FROM settings");
+        $allowedKeys = array_column($validSettings, 'key');
+        
         foreach ($settings as $key => $value) {
-            // Sanitize key
-            $sanitizedKey = preg_replace('/[^a-zA-Z0-9_]/', '', $key);
-            if (empty($sanitizedKey) || $sanitizedKey !== $key) {
+            // Validate key format
+            if (!is_string($key) || !preg_match('/^[a-zA-Z0-9_]+$/', $key)) {
+                continue;
+            }
+            
+            // Whitelist check: only allow keys that exist in the database
+            if (!in_array($key, $allowedKeys, true)) {
                 continue;
             }
             

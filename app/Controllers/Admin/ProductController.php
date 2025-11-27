@@ -387,20 +387,51 @@ class ProductController
         
         $file = $_FILES['image'];
         
-        // Validate file
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file['type'], $allowedTypes)) {
-            return Response::error('Invalid file type. Allowed: JPEG, PNG, GIF, WebP', 400);
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return Response::error('Upload failed with error code: ' . $file['error'], 400);
         }
         
+        // Validate file size first (before any processing)
         $maxSize = 5 * 1024 * 1024; // 5MB
         if ($file['size'] > $maxSize) {
             return Response::error('File too large. Maximum size: 5MB', 400);
         }
         
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid('product_') . '.' . $extension;
+        // Validate MIME type using finfo (more secure than trusting $_FILES['type'])
+        $allowedMimeTypes = [
+            'image/jpeg',
+            'image/png', 
+            'image/gif',
+            'image/webp',
+        ];
+        
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $detectedMimeType = $finfo->file($file['tmp_name']);
+        
+        if (!in_array($detectedMimeType, $allowedMimeTypes, true)) {
+            return Response::error('Invalid file type. Allowed: JPEG, PNG, GIF, WebP', 400);
+        }
+        
+        // Validate that it's actually a valid image
+        $imageInfo = @getimagesize($file['tmp_name']);
+        if ($imageInfo === false) {
+            return Response::error('Invalid image file', 400);
+        }
+        
+        // Map MIME type to extension
+        $mimeToExt = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        
+        // Use the detected MIME type's extension (not the user-provided one)
+        $extension = $mimeToExt[$detectedMimeType] ?? 'jpg';
+        
+        // Generate unique filename with random bytes for security
+        $filename = 'product_' . bin2hex(random_bytes(16)) . '.' . $extension;
         
         // Ensure upload directory exists
         $uploadDir = Application::getInstance()?->basePath('public/uploads/products') ?? 'public/uploads/products';
