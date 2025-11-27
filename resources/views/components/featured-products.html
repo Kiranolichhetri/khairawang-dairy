@@ -1,0 +1,254 @@
+<!-- ========================================
+     Featured Products Carousel Component
+     ======================================== -->
+<section id="products" class="section bg-light-gray" aria-labelledby="products-heading">
+  <div class="container-dairy">
+    <!-- Section Header -->
+    <div class="section-heading" data-animate="fade-up">
+      <span class="badge badge-primary mb-4">Our Products</span>
+      <h2 id="products-heading" class="section-title text-3xl md:text-4xl lg:text-5xl">
+        Featured Products
+      </h2>
+      <p class="section-subtitle">
+        Discover our selection of premium dairy products, made with the finest ingredients 
+        and delivered fresh to your doorstep.
+      </p>
+    </div>
+
+    <!-- Products Carousel -->
+    <div class="products-carousel" role="region" aria-label="Product carousel">
+      <!-- Navigation Arrows -->
+      <div class="products-carousel-nav">
+        <button class="products-carousel-btn" id="carousel-prev" aria-label="Previous products" disabled>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        </button>
+        <button class="products-carousel-btn" id="carousel-next" aria-label="Next products">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Products Container -->
+      <div class="products-carousel-container" id="products-container" role="list">
+        <!-- Product 1: Fresh Milk -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.1s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1563636619-e9143da7973b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Fresh Farm Milk - Whole milk in glass bottle" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+              <div class="product-card-badge">
+                <span class="badge badge-success">Fresh</span>
+              </div>
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Fresh Farm Milk</h3>
+              <p class="product-card-price">
+                NPR 120
+                <span class="product-card-price-old">NPR 150</span>
+              </p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Fresh Farm Milk to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Product 2: Organic Yogurt -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.2s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Organic Yogurt - Natural creamy yogurt in bowl" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+              <div class="product-card-badge">
+                <span class="badge badge-primary">Popular</span>
+              </div>
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Organic Yogurt</h3>
+              <p class="product-card-price">NPR 85</p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Organic Yogurt to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Product 3: Artisan Cheese -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.3s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Artisan Cheese - Premium aged cheese block" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+              <div class="product-card-badge">
+                <span class="badge badge-success">New</span>
+              </div>
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Artisan Cheese</h3>
+              <p class="product-card-price">NPR 350</p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Artisan Cheese to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Product 4: Fresh Butter -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.4s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Fresh Butter - Creamy farm butter" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Fresh Butter</h3>
+              <p class="product-card-price">NPR 180</p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Fresh Butter to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Product 5: Paneer -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.5s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1631452180519-c014fe946bc7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Fresh Paneer - Homemade cottage cheese" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+              <div class="product-card-badge">
+                <span class="badge badge-primary">Bestseller</span>
+              </div>
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Fresh Paneer</h3>
+              <p class="product-card-price">NPR 220</p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Fresh Paneer to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Product 6: Cream -->
+        <article class="products-carousel-item" data-animate="fade-up" style="animation-delay: 0.6s;" role="listitem">
+          <div class="product-card">
+            <div class="product-card-image">
+              <img src="https://images.unsplash.com/photo-1558961363-fa8fdf82db35?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                   alt="Fresh Cream - Rich dairy cream" 
+                   loading="lazy"
+                   width="600"
+                   height="750">
+            </div>
+            <div class="product-card-body">
+              <h3 class="product-card-name">Fresh Cream</h3>
+              <p class="product-card-price">NPR 95</p>
+              <button class="btn btn-primary product-card-action btn-animate" aria-label="Add Fresh Cream to cart">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Carousel Dots -->
+      <div class="products-carousel-dots" role="tablist" aria-label="Product pages">
+        <button class="products-carousel-dot active" role="tab" aria-selected="true" aria-label="Page 1"></button>
+        <button class="products-carousel-dot" role="tab" aria-selected="false" aria-label="Page 2"></button>
+        <button class="products-carousel-dot" role="tab" aria-selected="false" aria-label="Page 3"></button>
+      </div>
+    </div>
+
+    <!-- View All Button -->
+    <div class="text-center mt-12" data-animate="fade-up">
+      <a href="#shop" class="btn btn-secondary">
+        View All Products
+        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Carousel Script -->
+<script type="module">
+  const container = document.getElementById('products-container');
+  const prevBtn = document.getElementById('carousel-prev');
+  const nextBtn = document.getElementById('carousel-next');
+  const dots = document.querySelectorAll('.products-carousel-dot');
+  
+  if (container && prevBtn && nextBtn) {
+    const scrollAmount = 300;
+    
+    const updateButtons = () => {
+      prevBtn.disabled = container.scrollLeft <= 0;
+      nextBtn.disabled = container.scrollLeft >= container.scrollWidth - container.clientWidth - 10;
+      
+      // Update dots
+      const scrollPercentage = container.scrollLeft / (container.scrollWidth - container.clientWidth);
+      const activeIndex = Math.round(scrollPercentage * (dots.length - 1));
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === activeIndex);
+        dot.setAttribute('aria-selected', i === activeIndex);
+      });
+    };
+    
+    prevBtn.addEventListener('click', () => {
+      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+    
+    nextBtn.addEventListener('click', () => {
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+    
+    container.addEventListener('scroll', updateButtons);
+    
+    // Dot navigation
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        const targetScroll = (container.scrollWidth - container.clientWidth) * (index / (dots.length - 1));
+        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+      });
+    });
+    
+    // Touch support is native with overflow-x: auto
+    updateButtons();
+  }
+</script>
