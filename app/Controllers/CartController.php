@@ -24,8 +24,22 @@ class CartController
 
     /**
      * View cart contents
+     * 
+     * Renders the shopping cart HTML view.
+     * The view uses Alpine.js which fetches data from /api/v1/cart.
      */
     public function index(Request $request): Response
+    {
+        return Response::view('cart.index', [
+            'title' => 'Shopping Cart',
+            'pageDescription' => 'View and manage items in your shopping cart at KHAIRAWANG DAIRY.',
+        ]);
+    }
+
+    /**
+     * API endpoint: Get cart contents (JSON)
+     */
+    public function apiIndex(Request $request): Response
     {
         $cart = $this->cartService->getCartContents();
         
