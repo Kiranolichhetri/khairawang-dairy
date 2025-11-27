@@ -436,3 +436,18 @@ class ForbiddenException extends HttpException
         parent::__construct(403, $message, $code, $previous);
     }
 }
+
+/**
+ * Database Exception
+ */
+class DatabaseException extends \Exception {}
+
+/**
+ * Model Exception
+ */
+class ModelException extends \Exception {}
+
+/**
+ * Container Exception
+ */
+class ContainerException extends \Exception {}

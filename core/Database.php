@@ -34,17 +34,17 @@ class Database
     public function __construct(array $config = [])
     {
         $this->config = array_merge([
-            'driver' => 'mysql',
-            'host' => 'localhost',
-            'port' => 3306,
-            'database' => '',
-            'username' => '',
-            'password' => '',
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'options' => [],
-        ], $config);
+    'driver' => 'mysql',
+    'host' => '127.0.0.1',
+    'port' => 3306,
+    'database' => 'khairawang_dairy',
+    'username' => 'root',
+    'password' => '',
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+    'prefix' => '',
+    'options' => [],
+], $config);
     }
 
     /**

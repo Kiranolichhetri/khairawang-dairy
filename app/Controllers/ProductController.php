@@ -13,7 +13,7 @@ use Core\Response;
 /**
  * Product Controller
  * 
- * Handles product listing, search, and detail pages.
+ * Handles product listing, search, and detail pages. 
  */
 class ProductController
 {
@@ -76,19 +76,17 @@ class ProductController
                 break;
         }
         
-        // Get total count for pagination
-        $total = $query->count();
-        
+        // Clone query for count (to avoid modifying original)
+        $countQuery = clone $query;
+        $total = $countQuery->count();
+
         // Get paginated results
         $offset = ($page - 1) * $perPage;
-        $productsData = $query->limit($perPage)->offset($offset)->get();
-        
+        $productsData = $query->select('*')->limit($perPage)->offset($offset)->get();
+
         $products = [];
         foreach ($productsData as $row) {
-            $product = Product::find($row['id']);
-            if ($product !== null) {
-                $products[] = $this->formatProduct($product);
-            }
+            $products[] = $this->formatProductFromRow($row);
         }
         
         // Get categories for filter
@@ -98,10 +96,10 @@ class ProductController
             'success' => true,
             'data' => [
                 'products' => $products,
-                'category' => $category ? [
+                'category' => $category ?  [
                     'id' => $category->getKey(),
                     'name' => $category->getName(),
-                    'slug' => $category->attributes['slug'],
+                    'slug' => $category->attributes['slug'] ?? '',
                 ] : null,
                 'filters' => [
                     'search' => $search,
@@ -128,7 +126,7 @@ class ProductController
     {
         $product = Product::findBySlug($slug);
         
-        if ($product === null || !$product->isPublished()) {
+        if ($product === null || ! $product->isPublished()) {
             return Response::error('Product not found', 404);
         }
         
@@ -146,10 +144,7 @@ class ProductController
                 ->get();
             
             foreach ($relatedData as $row) {
-                $relatedProduct = Product::find($row['id']);
-                if ($relatedProduct !== null) {
-                    $relatedProducts[] = $this->formatProduct($relatedProduct);
-                }
+                $relatedProducts[] = $this->formatProductFromRow($row);
             }
         }
         
@@ -158,9 +153,9 @@ class ProductController
             'data' => [
                 'product' => $this->formatProductDetail($product),
                 'category' => $category ? [
-                    'id' => $category['id'],
-                    'name' => $category['name_en'],
-                    'slug' => $category['slug'],
+                    'id' => $category['id'] ?? null,
+                    'name' => $category['name_en'] ?? '',
+                    'slug' => $category['slug'] ?? '',
                 ] : null,
                 'variants' => $variants,
                 'related_products' => $relatedProducts,
@@ -187,16 +182,16 @@ class ProductController
             ->where('status', ProductStatus::PUBLISHED->value)
             ->orderBy('created_at', 'DESC');
         
-        $total = $query->count();
+        // Clone query for count
+        $countQuery = clone $query;
+        $total = $countQuery->count();
+        
         $offset = ($page - 1) * $perPage;
-        $productsData = $query->limit($perPage)->offset($offset)->get();
+        $productsData = $query->select('*')->limit($perPage)->offset($offset)->get();
         
         $products = [];
         foreach ($productsData as $row) {
-            $product = Product::find($row['id']);
-            if ($product !== null) {
-                $products[] = $this->formatProduct($product);
-            }
+            $products[] = $this->formatProductFromRow($row);
         }
         
         return Response::json([
@@ -206,8 +201,8 @@ class ProductController
                     'id' => $category->getKey(),
                     'name' => $category->getName(),
                     'name_ne' => $category->getName('ne'),
-                    'slug' => $category->attributes['slug'],
-                    'description' => $category->attributes['description'],
+                    'slug' => $category->attributes['slug'] ?? '',
+                    'description' => $category->attributes['description'] ?? '',
                     'image' => $category->getImageUrl(),
                 ],
                 'products' => $products,
@@ -256,19 +251,17 @@ class ProductController
         }
         
         // Search in name and description
-        $searchTerm = '%' . $query . '%';
+        $searchTerm = '%' . $query .  '%';
         $results = Product::query()
             ->where('status', ProductStatus::PUBLISHED->value)
             ->where('name_en', 'LIKE', $searchTerm)
+            ->select('*')
             ->limit($limit)
             ->get();
         
         $products = [];
         foreach ($results as $row) {
-            $product = Product::find($row['id']);
-            if ($product !== null) {
-                $products[] = $this->formatProduct($product);
-            }
+            $products[] = $this->formatProductFromRow($row);
         }
         
         return Response::json([
@@ -280,29 +273,56 @@ class ProductController
     }
 
     /**
-     * Format product for listing
+     * Format product from database row array
+     * 
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function formatProductFromRow(array $row): array
+    {
+        $price = (float) ($row['price'] ??  0);
+        $salePrice = ! empty($row['sale_price']) ? (float) $row['sale_price'] : null;
+        $currentPrice = ($salePrice !== null && $salePrice > 0) ? $salePrice : $price;
+        $isOnSale = $salePrice !== null && $salePrice > 0 && $salePrice < $price;
+        $discountPercentage = $isOnSale && $price > 0 ? (int) round((($price - $salePrice) / $price) * 100) : 0;
+        $stock = (int) ($row['stock'] ?? 0);
+        
+        // Stock status
+        $stockStatus = 'In Stock';
+        if ($stock <= 0) {
+            $stockStatus = 'Out of Stock';
+        } elseif ($stock <= 10) {
+            $stockStatus = 'Low Stock';
+        }
+        
+        return [
+            'id' => (int) ($row['id'] ??  0),
+            'name' => $row['name_en'] ?? '',
+            'name_ne' => $row['name_ne'] ??  $row['name_en'] ?? '',
+            'slug' => $row['slug'] ?? '',
+            'short_description' => $row['short_description'] ?? '',
+            'price' => $price,
+            'sale_price' => $salePrice,
+            'current_price' => $currentPrice,
+            'is_on_sale' => $isOnSale,
+            'discount_percentage' => $discountPercentage,
+            'stock' => $stock,
+            'in_stock' => $stock > 0,
+            'stock_status' => $stockStatus,
+            'featured' => (bool) ($row['featured'] ??  false),
+            'image' => '/assets/images/product-placeholder.png',
+        ];
+    }
+
+    /**
+     * Format product for listing (from Product model)
      * 
      * @return array<string, mixed>
      */
     private function formatProduct(Product $product): array
     {
-        return [
-            'id' => $product->getKey(),
-            'name' => $product->getName(),
-            'name_ne' => $product->getName('ne'),
-            'slug' => $product->attributes['slug'],
-            'short_description' => $product->attributes['short_description'],
-            'price' => (float) $product->attributes['price'],
-            'sale_price' => $product->attributes['sale_price'] ? (float) $product->attributes['sale_price'] : null,
-            'current_price' => $product->getCurrentPrice(),
-            'is_on_sale' => $product->isOnSale(),
-            'discount_percentage' => $product->getDiscountPercentage(),
-            'stock' => $product->attributes['stock'],
-            'in_stock' => $product->isInStock(),
-            'stock_status' => $product->getStockStatus(),
-            'featured' => (bool) $product->attributes['featured'],
-            'image' => $product->getPrimaryImage(),
-        ];
+        $attrs = $product->toArray();
+        return $this->formatProductFromRow($attrs);
     }
 
     /**
@@ -312,15 +332,17 @@ class ProductController
      */
     private function formatProductDetail(Product $product): array
     {
-        return array_merge($this->formatProduct($product), [
-            'description' => $product->getDescription(),
-            'description_ne' => $product->getDescription('ne'),
-            'sku' => $product->attributes['sku'],
-            'weight' => $product->attributes['weight'],
-            'images' => $product->getImageUrls(),
-            'low_stock' => $product->isLowStock(),
-            'seo_title' => $product->attributes['seo_title'],
-            'seo_description' => $product->attributes['seo_description'],
+        $attrs = $product->toArray();
+        
+        return array_merge($this->formatProductFromRow($attrs), [
+            'description' => $attrs['description_en'] ?? '',
+            'description_ne' => $attrs['description_ne'] ?? '',
+            'sku' => $attrs['sku'] ?? '',
+            'weight' => $attrs['weight'] ?? null,
+            'images' => ['/assets/images/product-placeholder.png'],
+            'low_stock' => ($attrs['stock'] ?? 0) > 0 && ($attrs['stock'] ??  0) <= 10,
+            'seo_title' => $attrs['seo_title'] ??  '',
+            'seo_description' => $attrs['seo_description'] ?? '',
         ]);
     }
 
@@ -331,15 +353,19 @@ class ProductController
      */
     private function getActiveCategories(): array
     {
-        $categories = Category::roots();
-        
-        return array_map(function($category) {
-            return [
-                'id' => $category->getKey(),
-                'name' => $category->getName(),
-                'slug' => $category->attributes['slug'],
-                'product_count' => $category->getProductCount(),
-            ];
-        }, $categories);
+        try {
+            $categories = Category::roots();
+            
+            return array_map(function($category) {
+                return [
+                    'id' => $category->getKey(),
+                    'name' => $category->getName(),
+                    'slug' => $category->attributes['slug'] ?? '',
+                    'product_count' => $category->getProductCount(),
+                ];
+            }, $categories);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }

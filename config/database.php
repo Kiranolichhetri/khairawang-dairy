@@ -12,7 +12,7 @@ return [
     /**
      * Default database connection
      */
-    'default' => env('DB_CONNECTION', 'mysql'),
+    'default' => 'mysql',
 
     /**
      * Database connections
@@ -20,14 +20,14 @@ return [
     'connections' => [
         'mysql' => [
             'driver' => 'mysql',
-            'host' => env('DB_HOST', 'localhost'),
-            'port' => (int) env('DB_PORT', 3306),
-            'database' => env('DB_DATABASE', 'khairawang_dairy'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'host' => '127.0.0.1',
+            'port' => 3306,
+            'database' => 'khairawang_dairy',
+            'username' => 'root',
+            'password' => '',
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => env('DB_PREFIX', ''),
+            'prefix' => '',
             'options' => [
                 \PDO::ATTR_PERSISTENT => false,
             ],
@@ -35,17 +35,17 @@ return [
 
         'sqlite' => [
             'driver' => 'sqlite',
-            'database' => env('DB_DATABASE', 'database/database.sqlite'),
+            'database' => 'database/database.sqlite',
             'prefix' => '',
         ],
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'host' => env('DB_HOST', 'localhost'),
-            'port' => (int) env('DB_PORT', 5432),
-            'database' => env('DB_DATABASE', 'khairawang_dairy'),
-            'username' => env('DB_USERNAME', 'postgres'),
-            'password' => env('DB_PASSWORD', ''),
+            'host' => '127.0.0. 1',
+            'port' => 5432,
+            'database' => 'khairawang_dairy',
+            'username' => 'postgres',
+            'password' => '',
             'charset' => 'utf8',
             'prefix' => '',
         ],
