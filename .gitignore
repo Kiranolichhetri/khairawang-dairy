@@ -1,4 +1,8 @@
 # Dependencies
+copilot/build-custom-mvc-framework
+/vendor/
+/node_modules/
+
 node_modules/
 .pnpm-store/
 
@@ -6,18 +10,52 @@ node_modules/
 dist/
 build/
 .vite/
+ main
 
 # Environment files
 .env
 .env.local
 .env.*.local
 
+copilot/build-custom-mvc-framework
+# Storage & Cache
+/storage/cache/*
+/storage/logs/*
+!/storage/cache/.gitkeep
+!/storage/logs/.gitkeep
+
+# IDE & Editors
+
 # IDE
+main
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+copilot/build-custom-mvc-framework
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/public/build/
+/public/hot
+
+# Uploaded files (should be managed separately)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Testing
+/coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# Misc
+*.log
+*.tmp
+*.bak
+.htpasswd
+
 
 # OS
 .DS_Store
@@ -34,3 +72,4 @@ npm-debug.log*
 # Temporary files
 tmp/
 temp/
+main
