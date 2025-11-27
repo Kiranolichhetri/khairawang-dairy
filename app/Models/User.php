@@ -23,6 +23,8 @@ class User extends Model
         'name',
         'phone',
         'avatar',
+        'google_id',
+        'email_verified_at',
         'status',
     ];
     

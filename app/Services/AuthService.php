@@ -105,6 +105,14 @@ class AuthService
     }
 
     /**
+     * Login a user without password verification (for OAuth)
+     */
+    public function loginUser(User $user): void
+    {
+        $this->login($user, false);
+    }
+
+    /**
      * Register a new user
      * 
      * @param array{name: string, email: string, phone: string, password: string} $data

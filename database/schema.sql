@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `role_id` INT UNSIGNED NOT NULL,
     `email` VARCHAR(255) NOT NULL UNIQUE,
+    `google_id` VARCHAR(255) NULL,
     `password` VARCHAR(255) NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `phone` VARCHAR(20),
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     INDEX `idx_email` (`email`),
     INDEX `idx_status` (`status`),
     INDEX `idx_role` (`role_id`),
+    INDEX `idx_google_id` (`google_id`),
     
     FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

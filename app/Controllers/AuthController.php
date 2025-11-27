@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\PasswordResetService;
+use App\Services\GoogleAuthService;
 use Core\Request;
 use Core\Response;
 use Core\Application;
@@ -15,17 +16,19 @@ use Core\Validator;
 /**
  * Authentication Controller
  * 
- * Handles user login, registration, logout, password reset, and email verification.
+ * Handles user login, registration, logout, password reset, email verification, and OAuth.
  */
 class AuthController
 {
     private AuthService $authService;
     private PasswordResetService $passwordResetService;
+    private GoogleAuthService $googleAuth;
 
     public function __construct()
     {
         $this->authService = new AuthService();
         $this->passwordResetService = new PasswordResetService();
+        $this->googleAuth = new GoogleAuthService();
     }
 
     /**
@@ -310,5 +313,98 @@ class AuthController
         }
         
         return Response::redirect('/login');
+    }
+
+    /**
+     * Redirect to Google OAuth
+     */
+    public function redirectToGoogle(Request $request): Response
+    {
+        return Response::redirect($this->googleAuth->getAuthUrl());
+    }
+
+    /**
+     * Handle Google OAuth callback
+     */
+    public function handleGoogleCallback(Request $request): Response
+    {
+        $code = $request->query('code');
+        
+        if (empty($code)) {
+            $app = Application::getInstance();
+            $app?->session()->error('Google authentication failed.');
+            return Response::redirect('/login');
+        }
+
+        try {
+            // Get access token
+            $tokenData = $this->googleAuth->getAccessToken($code);
+            
+            if (!isset($tokenData['access_token'])) {
+                throw new \Exception('Failed to get access token');
+            }
+
+            // Get user info
+            $googleUser = $this->googleAuth->getUserInfo($tokenData['access_token']);
+            
+            if (!isset($googleUser['email'])) {
+                throw new \Exception('Failed to get user info');
+            }
+
+            // Find or create user
+            $user = User::findByEmail($googleUser['email']);
+            
+            if (!$user) {
+                // Create new user
+                $result = $this->authService->register([
+                    'name' => $googleUser['name'] ?? $googleUser['email'],
+                    'email' => $googleUser['email'],
+                    'phone' => '',
+                    'password' => bin2hex(random_bytes(16)), // Random password
+                ]);
+                
+                if (!$result['success']) {
+                    throw new \Exception($result['message']);
+                }
+                
+                $user = User::findByEmail($googleUser['email']);
+                
+                if ($user) {
+                    // Update with Google-specific info
+                    $user->update([
+                        'google_id' => $googleUser['id'] ?? null,
+                        'avatar' => $googleUser['picture'] ?? null,
+                        'email_verified_at' => date('Y-m-d H:i:s'), // Auto-verify
+                    ]);
+                }
+            } else {
+                // Update google_id if not set
+                if (empty($user->attributes['google_id'])) {
+                    $user->update([
+                        'google_id' => $googleUser['id'] ?? null,
+                        'avatar' => $user->attributes['avatar'] ?? $googleUser['picture'] ?? null,
+                    ]);
+                }
+            }
+
+            if ($user === null) {
+                throw new \Exception('Failed to create or find user');
+            }
+
+            // Log in the user
+            $this->authService->loginUser($user);
+
+            $app = Application::getInstance();
+            $session = $app?->session();
+            $session?->regenerate();
+            $session?->success('Welcome, ' . htmlspecialchars($user->getFullName(), ENT_QUOTES, 'UTF-8') . '!');
+
+            return Response::redirect('/');
+            
+        } catch (\Exception $e) {
+            $app = Application::getInstance();
+            $app?->session()->error('Google authentication failed: ' . $e->getMessage());
+            return Response::redirect('/login');
+        }
     }
 }
