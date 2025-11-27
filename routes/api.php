@@ -12,6 +12,13 @@ declare(strict_types=1);
 use Core\Router;
 use Core\Request;
 use Core\Response;
+use App\Models\Category;
+use App\Controllers\ProductController;
+use App\Controllers\CartController;
+use App\Controllers\CheckoutController;
+use App\Controllers\OrderController;
+use App\Controllers\EsewaController;
+use App\Controllers\InvoiceController;
 
 /** @var Router $router */
 
@@ -22,81 +29,51 @@ use Core\Response;
 $router->group(['prefix' => '/api/v1'], function(Router $router) {
     
     // Products API
-    $router->get('/products', function(Request $request) {
-        return Response::json([
-            'success' => true,
-            'data' => [],
-            'meta' => [
-                'total' => 0,
-                'per_page' => 15,
-                'current_page' => 1,
-            ],
-        ]);
-    }, 'api.products.index');
-    
-    $router->get('/products/{id}', function(Request $request, string $id) {
-        return Response::json([
-            'success' => true,
-            'data' => ['id' => $id],
-        ]);
-    }, 'api.products.show');
-    
-    $router->get('/products/search', function(Request $request) {
-        $query = $request->query('q', '');
-        return Response::json([
-            'success' => true,
-            'data' => [],
-            'query' => $query,
-        ]);
-    }, 'api.products.search');
+    $router->get('/products', [ProductController::class, 'index'], 'api.products.index');
+    $router->get('/products/search', [ProductController::class, 'search'], 'api.products.search');
+    $router->get('/products/featured', [ProductController::class, 'featured'], 'api.products.featured');
+    $router->get('/products/category/{slug}', [ProductController::class, 'category'], 'api.products.category');
+    $router->get('/products/{slug}', [ProductController::class, 'show'], 'api.products.show');
     
     // Categories API
     $router->get('/categories', function(Request $request) {
+        $categories = Category::roots();
         return Response::json([
             'success' => true,
-            'data' => [],
+            'data' => array_map(function($cat) {
+                return [
+                    'id' => $cat->getKey(),
+                    'name' => $cat->getName(),
+                    'name_ne' => $cat->getName('ne'),
+                    'slug' => $cat->attributes['slug'],
+                    'image' => $cat->getImageUrl(),
+                    'product_count' => $cat->getProductCount(),
+                ];
+            }, $categories),
         ]);
     }, 'api.categories.index');
     
-    $router->get('/categories/{slug}', function(Request $request, string $slug) {
-        return Response::json([
-            'success' => true,
-            'data' => ['slug' => $slug],
-        ]);
-    }, 'api.categories.show');
+    $router->get('/categories/{slug}', [ProductController::class, 'category'], 'api.categories.show');
     
     // Cart API
-    $router->get('/cart', function(Request $request) {
-        return Response::json([
-            'success' => true,
-            'data' => [
-                'items' => [],
-                'subtotal' => 0,
-                'count' => 0,
-            ],
-        ]);
-    }, 'api.cart.index');
+    $router->get('/cart', [CartController::class, 'index'], 'api.cart.index');
+    $router->post('/cart/items', [CartController::class, 'add'], 'api.cart.add');
+    $router->put('/cart/items/{id}', [CartController::class, 'update'], 'api.cart.update');
+    $router->delete('/cart/items/{id}', [CartController::class, 'remove'], 'api.cart.remove');
+    $router->delete('/cart/clear', [CartController::class, 'clear'], 'api.cart.clear');
+    $router->post('/cart/sync', [CartController::class, 'sync'], 'api.cart.sync');
+    $router->get('/cart/count', [CartController::class, 'count'], 'api.cart.count');
     
-    $router->post('/cart/items', function(Request $request) {
-        return Response::json([
-            'success' => true,
-            'message' => 'Item added to cart',
-        ], 201);
-    }, 'api.cart.add');
+    // Checkout API
+    $router->get('/checkout', [CheckoutController::class, 'index'], 'api.checkout.index');
+    $router->post('/checkout', [CheckoutController::class, 'process'], 'api.checkout.process');
+    $router->get('/checkout/validate', [CheckoutController::class, 'validateStock'], 'api.checkout.validate');
     
-    $router->put('/cart/items/{id}', function(Request $request, string $id) {
-        return Response::json([
-            'success' => true,
-            'message' => 'Cart item updated',
-        ]);
-    }, 'api.cart.update');
-    
-    $router->delete('/cart/items/{id}', function(Request $request, string $id) {
-        return Response::json([
-            'success' => true,
-            'message' => 'Cart item removed',
-        ]);
-    }, 'api.cart.remove');
+    // Orders API
+    $router->get('/orders', [OrderController::class, 'index'], 'api.orders.index');
+    $router->get('/orders/{orderNumber}', [OrderController::class, 'show'], 'api.orders.show');
+    $router->get('/orders/{orderNumber}/track', [OrderController::class, 'track'], 'api.orders.track');
+    $router->post('/orders/{orderNumber}/cancel', [OrderController::class, 'cancel'], 'api.orders.cancel');
     
     // Newsletter subscription
     $router->post('/newsletter/subscribe', function(Request $request) {
@@ -121,15 +98,11 @@ $router->group(['prefix' => '/api/v1'], function(Router $router) {
 
 $router->group(['prefix' => '/api/payment'], function(Router $router) {
     // eSewa callback
-    $router->get('/esewa/callback', function(Request $request) {
-        return Response::json(['status' => 'received']);
-    }, 'api.payment.esewa.callback');
+    $router->get('/esewa/success', [EsewaController::class, 'success'], 'api.payment.esewa.success');
+    $router->get('/esewa/failure', [EsewaController::class, 'failure'], 'api.payment.esewa.failure');
+    $router->post('/esewa/verify', [EsewaController::class, 'verify'], 'api.payment.esewa.verify');
     
-    $router->post('/esewa/verify', function(Request $request) {
-        return Response::json(['verified' => true]);
-    }, 'api.payment.esewa.verify');
-    
-    // Khalti callback
+    // Khalti callback (placeholder for future implementation)
     $router->get('/khalti/callback', function(Request $request) {
         return Response::json(['status' => 'received']);
     }, 'api.payment.khalti.callback');
