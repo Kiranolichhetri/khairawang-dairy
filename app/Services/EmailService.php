@@ -338,6 +338,16 @@ class EmailService
             
             return true;
         } catch (\Exception $e) {
+            // Log the SMTP failure for debugging
+            $app = Application::getInstance();
+            $logPath = $app?->basePath() . '/storage/logs/mail.log';
+            $logEntry = sprintf(
+                "[%s] SMTP Error: %s | Falling back to PHP mail\n",
+                date('Y-m-d H:i:s'),
+                $e->getMessage()
+            );
+            @file_put_contents($logPath, $logEntry, FILE_APPEND);
+            
             // Fallback to PHP mail
             return $this->sendViaMail($to, $subject, $content, $fromAddress, $fromName);
         }

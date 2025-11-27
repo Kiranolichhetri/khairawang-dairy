@@ -117,7 +117,8 @@ class SmsService
     public function generateOtp(): string
     {
         $length = $this->config['otp']['length'] ?? 6;
-        return str_pad((string) random_int(0, (int) str_repeat('9', $length)), $length, '0', STR_PAD_LEFT);
+        $maxValue = (int) pow(10, $length) - 1;
+        return sprintf('%0' . $length . 'd', random_int(0, $maxValue));
     }
 
     /**

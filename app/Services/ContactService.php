@@ -210,17 +210,23 @@ class ContactService
         $app = Application::getInstance();
         $adminEmail = $app?->config('mail.from.address', 'admin@khairawangdairy.com');
         
-        $subject = 'New Contact Inquiry: ' . ($inquiry->subject ?? 'No Subject');
+        $subject = 'New Contact Inquiry: ' . htmlspecialchars($inquiry->subject ?? 'No Subject', ENT_QUOTES, 'UTF-8');
+        
+        $escapedName = htmlspecialchars($inquiry->name ?? '', ENT_QUOTES, 'UTF-8');
+        $escapedEmail = htmlspecialchars($inquiry->email ?? '', ENT_QUOTES, 'UTF-8');
+        $escapedPhone = htmlspecialchars($inquiry->phone ?? '', ENT_QUOTES, 'UTF-8');
+        $escapedSubject = htmlspecialchars($inquiry->subject ?? '', ENT_QUOTES, 'UTF-8');
+        $escapedMessage = htmlspecialchars($inquiry->message ?? '', ENT_QUOTES, 'UTF-8');
         
         $message = "
             <h2>New Contact Inquiry</h2>
-            <p><strong>From:</strong> {$inquiry->name} ({$inquiry->email})</p>
-            <p><strong>Phone:</strong> {$inquiry->phone}</p>
-            <p><strong>Subject:</strong> {$inquiry->subject}</p>
+            <p><strong>From:</strong> {$escapedName} ({$escapedEmail})</p>
+            <p><strong>Phone:</strong> {$escapedPhone}</p>
+            <p><strong>Subject:</strong> {$escapedSubject}</p>
             <p><strong>Message:</strong></p>
-            <p>{$inquiry->message}</p>
+            <p>{$escapedMessage}</p>
             <hr>
-            <p>View in admin panel: " . url('/admin/contacts/' . $inquiry->getKey()) . "</p>
+            <p>View in admin panel: " . htmlspecialchars(url('/admin/contacts/' . $inquiry->getKey()), ENT_QUOTES, 'UTF-8') . "</p>
         ";
         
         return $this->emailService->send($adminEmail, $subject, 'emails/admin-notification', [
@@ -234,18 +240,23 @@ class ContactService
      */
     private function sendReplyEmail(ContactInquiry $inquiry, string $replyMessage): bool
     {
-        $subject = 'Re: ' . ($inquiry->subject ?? 'Your Inquiry') . ' - KHAIRAWANG DAIRY';
+        $escapedSubject = htmlspecialchars($inquiry->subject ?? 'Your Inquiry', ENT_QUOTES, 'UTF-8');
+        $subject = 'Re: ' . $escapedSubject . ' - KHAIRAWANG DAIRY';
+        
+        $escapedName = htmlspecialchars($inquiry->name ?? '', ENT_QUOTES, 'UTF-8');
+        $escapedReply = htmlspecialchars($replyMessage, ENT_QUOTES, 'UTF-8');
+        $escapedOriginalMessage = htmlspecialchars($inquiry->message ?? '', ENT_QUOTES, 'UTF-8');
         
         $message = "
             <h2>Thank you for contacting KHAIRAWANG DAIRY</h2>
-            <p>Dear {$inquiry->name},</p>
+            <p>Dear {$escapedName},</p>
             <p>Thank you for your inquiry. Here is our response:</p>
             <blockquote style='border-left: 3px solid #ccc; padding-left: 10px; margin: 10px 0;'>
-                {$replyMessage}
+                {$escapedReply}
             </blockquote>
             <hr>
             <p><strong>Your original message:</strong></p>
-            <p>{$inquiry->message}</p>
+            <p>{$escapedOriginalMessage}</p>
             <hr>
             <p>If you have any further questions, please don't hesitate to reach out.</p>
             <p>Best regards,<br>KHAIRAWANG DAIRY Team</p>

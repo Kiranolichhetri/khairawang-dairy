@@ -21,10 +21,12 @@ CREATE TABLE IF NOT EXISTS `newsletter_campaigns` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add unsubscribe_token to existing newsletter_subscribers table if not exists
+-- Note: This is safe to run multiple times due to IF NOT EXISTS
 ALTER TABLE `newsletter_subscribers` 
 ADD COLUMN IF NOT EXISTS `unsubscribe_token` VARCHAR(64) NULL UNIQUE AFTER `name`;
 
--- Update existing subscribers with tokens
+-- Update existing subscribers with tokens (only where token is NULL or empty)
+-- This is idempotent - it will only update records that don't have a token
 UPDATE `newsletter_subscribers` 
 SET `unsubscribe_token` = SHA2(CONCAT(email, RAND(), NOW()), 256)
-WHERE `unsubscribe_token` IS NULL;
+WHERE `unsubscribe_token` IS NULL OR `unsubscribe_token` = '';

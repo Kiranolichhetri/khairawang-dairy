@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Models\Notification;
 use App\Services\NotificationService;
 use Core\Request;
 use Core\Response;
@@ -95,7 +96,7 @@ class NotificationController
             return Response::redirect('/login');
         }
         
-        $notification = \App\Models\Notification::find((int) $id);
+        $notification = Notification::find((int) $id);
         
         if ($notification === null || $notification->user_id != $userId) {
             if ($request->expectsJson()) {
@@ -303,7 +304,7 @@ class NotificationController
      * 
      * @return array<string, mixed>
      */
-    private function formatNotification(\App\Models\Notification $notification): array
+    private function formatNotification(Notification $notification): array
     {
         return [
             'id' => $notification->getKey(),
