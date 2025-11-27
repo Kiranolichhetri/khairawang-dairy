@@ -37,6 +37,8 @@ use App\Controllers\NotificationController;
 use App\Controllers\CouponController;
 use App\Controllers\BlogController;
 use App\Controllers\SeoController;
+use App\Controllers\HomeController;
+use App\Controllers\PageController;
 use App\Controllers\Admin\NewsletterController as AdminNewsletterController;
 use App\Controllers\Admin\ContactController as AdminContactController;
 use App\Controllers\Admin\CouponController as AdminCouponController;
@@ -50,9 +52,7 @@ use App\Controllers\Admin\InventoryController as AdminInventoryController;
 // ==================================================
 
 // Home page
-$router->get('/', function(Request $request) {
-    return new Response('<h1>Welcome to KHAIRAWANG DAIRY</h1><p>Premium Dairy Products</p>');
-}, 'home');
+$router->get('/', [HomeController::class, 'index'], 'home');
 
 // Health check
 $router->get('/health', function() {
@@ -322,9 +322,7 @@ $router->group([
 // Static Pages
 // ==================================================
 
-$router->get('/about', function(Request $request) {
-    return new Response('<h1>About KHAIRAWANG DAIRY</h1>');
-}, 'about');
+$router->get('/about', [PageController::class, 'about'], 'about');
 
 // ==================================================
 // Contact Routes
@@ -358,13 +356,9 @@ $router->get('/blog/{slug}', [BlogController::class, 'show'], 'blog.show');
 $router->get('/sitemap.xml', [SeoController::class, 'sitemap'], 'seo.sitemap');
 $router->get('/robots.txt', [SeoController::class, 'robots'], 'seo.robots');
 
-$router->get('/terms', function(Request $request) {
-    return new Response('<h1>Terms & Conditions</h1>');
-}, 'terms');
+$router->get('/terms', [PageController::class, 'terms'], 'terms');
 
-$router->get('/privacy', function(Request $request) {
-    return new Response('<h1>Privacy Policy</h1>');
-}, 'privacy');
+$router->get('/privacy', [PageController::class, 'privacy'], 'privacy');
 
 // ==================================================
 // Payment Routes
