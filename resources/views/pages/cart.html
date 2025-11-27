@@ -1,0 +1,194 @@
+<!-- ========================================
+     Cart Page - KHAIRAWANG DAIRY
+     ======================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Your shopping cart - KHAIRAWANG DAIRY">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥛</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/resources/css/app.css">
+  <script type="module" src="/resources/js/app.js"></script>
+  <title>Shopping Cart - KHAIRAWANG DAIRY</title>
+  <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="font-body text-dark-brown bg-cream antialiased" x-data>
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-soft-md">
+    <div class="container-dairy">
+      <nav class="flex items-center justify-between py-4">
+        <a href="/" class="flex items-center gap-2 font-heading font-bold text-2xl text-dark-brown">
+          <span class="text-3xl">🥛</span>
+          <span class="hidden sm:inline">KHAIRAWANG DAIRY</span>
+        </a>
+        <div class="hidden md:flex items-center gap-8">
+          <a href="/" class="text-dark-brown hover:text-accent-orange font-medium">Home</a>
+          <a href="/products" class="text-dark-brown hover:text-accent-orange font-medium">Products</a>
+          <a href="/about" class="text-dark-brown hover:text-accent-orange font-medium">About</a>
+          <a href="/contact" class="text-dark-brown hover:text-accent-orange font-medium">Contact</a>
+        </div>
+        <div class="flex items-center gap-3">
+          <button @click="$store.search.open()" class="p-2 rounded-lg text-dark-brown hover:bg-dark-brown hover:bg-opacity-10" aria-label="Search">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" class="pt-24 pb-16">
+    <div class="container-dairy">
+      <!-- Breadcrumbs -->
+      <nav class="mb-6" aria-label="Breadcrumb">
+        <ol class="flex items-center gap-2 text-sm">
+          <li><a href="/" class="text-gray-500 hover:text-accent-orange">Home</a></li>
+          <li class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            <span class="text-dark-brown font-medium">Shopping Cart</span>
+          </li>
+        </ol>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-heading font-bold text-dark-brown">Shopping Cart</h1>
+      </div>
+
+      <!-- Cart Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Cart Items -->
+        <div class="lg:col-span-2">
+          <!-- Empty Cart -->
+          <div x-show="$store.cart.isEmpty" class="bg-white rounded-2xl shadow-soft p-12 text-center">
+            <div class="w-24 h-24 mx-auto mb-6 bg-light-gray rounded-full flex items-center justify-center">
+              <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </div>
+            <h2 class="text-xl font-heading font-semibold text-dark-brown mb-2">Your cart is empty</h2>
+            <p class="text-gray-500 mb-6">Looks like you haven't added anything to your cart yet.</p>
+            <a href="/products" class="btn btn-primary">Start Shopping</a>
+          </div>
+
+          <!-- Cart Items List -->
+          <div x-show="!$store.cart.isEmpty" class="bg-white rounded-2xl shadow-soft overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+              <h2 class="font-heading font-semibold text-dark-brown">Cart Items (<span x-text="$store.cart.count"></span>)</h2>
+            </div>
+            <ul class="divide-y divide-gray-100">
+              <template x-for="(item, index) in $store.cart.items" :key="item.id">
+                <li class="p-6 flex gap-6">
+                  <!-- Product Image -->
+                  <div class="flex-shrink-0 w-24 h-24 bg-light-gray rounded-xl overflow-hidden">
+                    <img :src="item.image" :alt="item.name" class="w-full h-full object-cover">
+                  </div>
+                  
+                  <!-- Product Details -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-dark-brown mb-1" x-text="item.name"></h3>
+                    <p class="text-sm text-gray-500 mb-3">Unit Price: NPR <span x-text="item.price"></span></p>
+                    
+                    <!-- Quantity Controls -->
+                    <div class="flex items-center gap-3">
+                      <button @click="$store.cart.decrement(index)"
+                              class="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-light-gray transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+                      </button>
+                      <span class="w-12 text-center font-semibold text-lg" x-text="item.quantity"></span>
+                      <button @click="$store.cart.increment(index)"
+                              class="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-light-gray transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Price & Remove -->
+                  <div class="flex flex-col items-end justify-between">
+                    <span class="text-lg font-bold text-accent-orange">NPR <span x-text="item.price * item.quantity"></span></span>
+                    <button @click="$store.cart.remove(index)"
+                            class="text-sm text-gray-400 hover:text-error-red transition-colors flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              </template>
+            </ul>
+            <div class="p-6 border-t border-gray-100 flex justify-between">
+              <button @click="$store.cart.clear()" class="text-sm text-gray-500 hover:text-error-red transition-colors">Clear Cart</button>
+              <a href="/products" class="text-sm text-accent-orange hover:underline">Continue Shopping</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div x-show="!$store.cart.isEmpty" class="lg:col-span-1">
+          <div class="bg-white rounded-2xl shadow-soft p-6 sticky top-24">
+            <h2 class="font-heading font-semibold text-dark-brown mb-6">Order Summary</h2>
+            
+            <div class="space-y-4 mb-6">
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Subtotal</span>
+                <span class="font-medium text-dark-brown" x-text="$store.cart.formattedSubtotal"></span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Shipping</span>
+                <span class="font-medium" :class="$store.cart.shippingCost === 0 ? 'text-success-green' : 'text-dark-brown'" x-text="$store.cart.formattedShipping"></span>
+              </div>
+            </div>
+
+            <!-- Free Shipping Progress -->
+            <div x-show="$store.cart.shippingCost > 0" class="bg-light-gray rounded-lg p-4 mb-6">
+              <p class="text-sm text-gray-600 mb-2">
+                Add <span class="font-semibold text-accent-orange">NPR <span x-text="1000 - $store.cart.subtotal"></span></span> more for free shipping!
+              </p>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full bg-accent-orange rounded-full transition-all duration-300"
+                     :style="'width: ' + Math.min(($store.cart.subtotal / 1000) * 100, 100) + '%'"></div>
+              </div>
+            </div>
+
+            <div class="flex justify-between text-lg font-semibold border-t border-gray-100 pt-4 mb-6">
+              <span class="text-dark-brown">Total</span>
+              <span class="text-accent-orange" x-text="$store.cart.formattedTotal"></span>
+            </div>
+
+            <a href="/checkout" class="btn btn-primary w-full justify-center">
+              Proceed to Checkout
+              <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            </a>
+
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <p class="text-xs text-gray-500 text-center mb-4">Secure Checkout</p>
+              <div class="flex justify-center gap-2">
+                <div class="w-10 h-6 bg-light-gray rounded flex items-center justify-center text-xs font-bold text-gray-400">VISA</div>
+                <div class="w-10 h-6 bg-light-gray rounded flex items-center justify-center text-xs font-bold text-gray-400">MC</div>
+                <div class="w-10 h-6 bg-light-gray rounded flex items-center justify-center text-xs font-bold text-gray-400">COD</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-bottom"><div class="container-dairy"><div class="footer-bottom-content"><p class="footer-copyright">&copy; 2024 KHAIRAWANG DAIRY. All rights reserved.</p></div></div></div>
+  </footer>
+
+  <!-- Toast Notifications -->
+  <div class="fixed bottom-4 right-4 z-50 space-y-2">
+    <template x-for="toast in $store.toast.toasts" :key="toast.id">
+      <div x-show="toast.visible" x-transition :class="$store.toast.getColorClasses(toast.type)" class="flex items-center gap-3 px-4 py-3 rounded-xl shadow-soft-lg min-w-[280px] max-w-sm">
+        <span x-html="$store.toast.getIcon(toast.type)"></span>
+        <span x-text="toast.message" class="flex-1 text-sm font-medium"></span>
+        <button @click="$store.toast.dismiss(toast.id)" class="flex-shrink-0 opacity-80 hover:opacity-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+      </div>
+    </template>
+  </div>
+</body>
+</html>

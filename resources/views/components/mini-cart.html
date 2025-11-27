@@ -1,0 +1,106 @@
+<!-- ========================================
+     Mini Cart Component (Header Dropdown)
+     ======================================== -->
+<div x-data="dropdown" class="relative">
+  <!-- Cart Button -->
+  <button @click="toggle()" 
+          class="relative p-2 rounded-lg transition-colors hover:bg-dark-brown hover:bg-opacity-10"
+          :aria-expanded="isOpen"
+          aria-haspopup="true"
+          aria-label="Shopping cart">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+    </svg>
+    <!-- Count Badge -->
+    <span x-show="$store.cart.count > 0" 
+          x-text="$store.cart.count"
+          x-transition
+          class="absolute -top-1 -right-1 bg-accent-orange text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+    </span>
+  </button>
+
+  <!-- Dropdown Menu -->
+  <div x-show="isOpen"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       x-cloak
+       class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-soft-xl border border-gray-100 overflow-hidden z-50"
+       role="menu"
+       aria-orientation="vertical">
+    
+    <!-- Header -->
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="font-heading font-semibold text-dark-brown">Shopping Cart</h3>
+      <span x-show="$store.cart.count > 0" class="text-sm text-gray-500">
+        <span x-text="$store.cart.count"></span> items
+      </span>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="$store.cart.isEmpty" class="p-6 text-center">
+      <div class="w-16 h-16 mx-auto mb-3 bg-light-gray rounded-full flex items-center justify-center">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+      </div>
+      <p class="text-gray-500 text-sm">Your cart is empty</p>
+    </div>
+
+    <!-- Cart Items (Max 3 shown) -->
+    <div x-show="!$store.cart.isEmpty" class="max-h-64 overflow-y-auto">
+      <ul class="divide-y divide-gray-100">
+        <template x-for="(item, index) in $store.cart.items.slice(0, 3)" :key="item.id">
+          <li class="flex gap-3 p-4 hover:bg-light-gray transition-colors">
+            <!-- Image -->
+            <div class="flex-shrink-0 w-14 h-14 bg-gray-100 rounded-lg overflow-hidden">
+              <img :src="item.image" :alt="item.name" class="w-full h-full object-cover">
+            </div>
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+              <h4 class="text-sm font-medium text-dark-brown truncate" x-text="item.name"></h4>
+              <p class="text-sm text-gray-500">
+                <span x-text="item.quantity"></span> × NPR <span x-text="item.price"></span>
+              </p>
+            </div>
+            <!-- Remove -->
+            <button @click.stop="$store.cart.remove(index)"
+                    class="flex-shrink-0 p-1 text-gray-400 hover:text-error-red transition-colors"
+                    aria-label="Remove item">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </li>
+        </template>
+      </ul>
+
+      <!-- More items indicator -->
+      <div x-show="$store.cart.items.length > 3" class="px-4 py-2 bg-light-gray text-center text-sm text-gray-500">
+        + <span x-text="$store.cart.items.length - 3"></span> more items
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div x-show="!$store.cart.isEmpty" class="px-4 py-3 border-t border-gray-100 space-y-3">
+      <!-- Subtotal -->
+      <div class="flex justify-between">
+        <span class="text-sm text-gray-500">Subtotal</span>
+        <span class="font-semibold text-dark-brown" x-text="$store.cart.formattedSubtotal"></span>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2">
+        <a href="/cart" class="flex-1 btn btn-secondary btn-sm justify-center">
+          View Cart
+        </a>
+        <a href="/checkout" class="flex-1 btn btn-primary btn-sm justify-center">
+          Checkout
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,258 @@
+<!-- ========================================
+     Checkout Page - KHAIRAWANG DAIRY
+     ======================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Checkout - KHAIRAWANG DAIRY">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥛</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/resources/css/app.css">
+  <script type="module" src="/resources/js/app.js"></script>
+  <title>Checkout - KHAIRAWANG DAIRY</title>
+  <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="font-body text-dark-brown bg-cream antialiased" x-data>
+  <!-- Header -->
+  <header class="bg-white shadow-soft-md">
+    <div class="container-dairy">
+      <nav class="flex items-center justify-between py-4">
+        <a href="/" class="flex items-center gap-2 font-heading font-bold text-2xl text-dark-brown">
+          <span class="text-3xl">🥛</span>
+          <span class="hidden sm:inline">KHAIRAWANG DAIRY</span>
+        </a>
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+          <svg class="w-5 h-5 text-success-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+          Secure Checkout
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" class="py-8 md:py-12">
+    <div class="container-dairy"
+         x-data="{
+           step: 1,
+           shippingInfo: { name: '', email: '', phone: '', address: '', city: '', zipcode: '' },
+           paymentMethod: 'cod',
+           isProcessing: false,
+           orderComplete: false
+         }">
+      
+      <!-- Progress Steps -->
+      <div class="max-w-2xl mx-auto mb-8">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2" :class="step >= 1 ? 'text-accent-orange' : 'text-gray-400'">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" :class="step >= 1 ? 'bg-accent-orange text-white' : 'bg-gray-200'">1</div>
+            <span class="hidden sm:inline font-medium">Shipping</span>
+          </div>
+          <div class="flex-1 h-1 mx-4 rounded" :class="step >= 2 ? 'bg-accent-orange' : 'bg-gray-200'"></div>
+          <div class="flex items-center gap-2" :class="step >= 2 ? 'text-accent-orange' : 'text-gray-400'">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" :class="step >= 2 ? 'bg-accent-orange text-white' : 'bg-gray-200'">2</div>
+            <span class="hidden sm:inline font-medium">Payment</span>
+          </div>
+          <div class="flex-1 h-1 mx-4 rounded" :class="step >= 3 ? 'bg-accent-orange' : 'bg-gray-200'"></div>
+          <div class="flex items-center gap-2" :class="step >= 3 ? 'text-accent-orange' : 'text-gray-400'">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" :class="step >= 3 ? 'bg-accent-orange text-white' : 'bg-gray-200'">3</div>
+            <span class="hidden sm:inline font-medium">Confirm</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Checkout Form -->
+        <div class="lg:col-span-2">
+          <!-- Step 1: Shipping Information -->
+          <div x-show="step === 1" class="bg-white rounded-2xl shadow-soft p-6 md:p-8">
+            <h2 class="text-xl font-heading font-semibold text-dark-brown mb-6">Shipping Information</h2>
+            <form @submit.prevent="step = 2" class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                  <input type="text" id="name" x-model="shippingInfo.name" class="input" required>
+                </div>
+                <div>
+                  <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input type="email" id="email" x-model="shippingInfo.email" class="input" required>
+                </div>
+              </div>
+              <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                <input type="tel" id="phone" x-model="shippingInfo.phone" class="input" placeholder="+977 98XXXXXXXX" required>
+              </div>
+              <div>
+                <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Delivery Address *</label>
+                <textarea id="address" x-model="shippingInfo.address" class="input" rows="3" required></textarea>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="city" class="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <input type="text" id="city" x-model="shippingInfo.city" class="input" required>
+                </div>
+                <div>
+                  <label for="zipcode" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                  <input type="text" id="zipcode" x-model="shippingInfo.zipcode" class="input">
+                </div>
+              </div>
+              <div class="flex justify-between pt-4">
+                <a href="/cart" class="btn btn-secondary">← Back to Cart</a>
+                <button type="submit" class="btn btn-primary">Continue to Payment →</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Step 2: Payment Method -->
+          <div x-show="step === 2" x-cloak class="bg-white rounded-2xl shadow-soft p-6 md:p-8">
+            <h2 class="text-xl font-heading font-semibold text-dark-brown mb-6">Payment Method</h2>
+            <div class="space-y-4">
+              <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-colors" :class="paymentMethod === 'cod' ? 'border-accent-orange bg-accent-orange bg-opacity-5' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" name="payment" value="cod" x-model="paymentMethod" class="sr-only">
+                <div class="w-10 h-10 bg-accent-orange bg-opacity-10 rounded-lg flex items-center justify-center mr-4">
+                  <svg class="w-5 h-5 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold text-dark-brown">Cash on Delivery</p>
+                  <p class="text-sm text-gray-500">Pay when your order arrives</p>
+                </div>
+                <div class="w-5 h-5 rounded-full border-2" :class="paymentMethod === 'cod' ? 'border-accent-orange bg-accent-orange' : 'border-gray-300'">
+                  <svg x-show="paymentMethod === 'cod'" class="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                </div>
+              </label>
+              <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-colors" :class="paymentMethod === 'esewa' ? 'border-accent-orange bg-accent-orange bg-opacity-5' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" name="payment" value="esewa" x-model="paymentMethod" class="sr-only">
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                  <span class="text-green-600 font-bold text-sm">eSewa</span>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold text-dark-brown">eSewa</p>
+                  <p class="text-sm text-gray-500">Pay with your eSewa wallet</p>
+                </div>
+                <div class="w-5 h-5 rounded-full border-2" :class="paymentMethod === 'esewa' ? 'border-accent-orange bg-accent-orange' : 'border-gray-300'">
+                  <svg x-show="paymentMethod === 'esewa'" class="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                </div>
+              </label>
+            </div>
+            <div class="flex justify-between pt-6">
+              <button @click="step = 1" class="btn btn-secondary">← Back</button>
+              <button @click="step = 3" class="btn btn-primary">Review Order →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Order Review -->
+          <div x-show="step === 3" x-cloak class="bg-white rounded-2xl shadow-soft p-6 md:p-8">
+            <h2 class="text-xl font-heading font-semibold text-dark-brown mb-6">Review Your Order</h2>
+            
+            <!-- Shipping Details -->
+            <div class="mb-6 pb-6 border-b border-gray-100">
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="font-semibold text-dark-brown">Shipping To</h3>
+                <button @click="step = 1" class="text-sm text-accent-orange hover:underline">Edit</button>
+              </div>
+              <p class="text-gray-600" x-text="shippingInfo.name"></p>
+              <p class="text-gray-600" x-text="shippingInfo.email"></p>
+              <p class="text-gray-600" x-text="shippingInfo.phone"></p>
+              <p class="text-gray-600" x-text="shippingInfo.address + ', ' + shippingInfo.city"></p>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="mb-6 pb-6 border-b border-gray-100">
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="font-semibold text-dark-brown">Payment Method</h3>
+                <button @click="step = 2" class="text-sm text-accent-orange hover:underline">Edit</button>
+              </div>
+              <p class="text-gray-600" x-text="paymentMethod === 'cod' ? 'Cash on Delivery' : 'eSewa'"></p>
+            </div>
+
+            <!-- Order Items -->
+            <div class="mb-6">
+              <h3 class="font-semibold text-dark-brown mb-4">Order Items</h3>
+              <ul class="space-y-3">
+                <template x-for="item in $store.cart.items" :key="item.id">
+                  <li class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-light-gray rounded-lg overflow-hidden">
+                      <img :src="item.image" :alt="item.name" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-medium text-dark-brown" x-text="item.name"></p>
+                      <p class="text-sm text-gray-500">Qty: <span x-text="item.quantity"></span></p>
+                    </div>
+                    <span class="font-medium text-dark-brown">NPR <span x-text="item.price * item.quantity"></span></span>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <div class="flex justify-between pt-4">
+              <button @click="step = 2" class="btn btn-secondary">← Back</button>
+              <button @click="isProcessing = true; setTimeout(() => { isProcessing = false; orderComplete = true; $store.cart.clear(); }, 2000);"
+                      class="btn btn-primary"
+                      :disabled="isProcessing">
+                <span x-show="!isProcessing">Place Order</span>
+                <span x-show="isProcessing" class="flex items-center gap-2">
+                  <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                  Processing...
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Order Complete -->
+          <div x-show="orderComplete" x-cloak class="bg-white rounded-2xl shadow-soft p-8 text-center">
+            <div class="w-20 h-20 mx-auto mb-6 bg-success-green bg-opacity-10 rounded-full flex items-center justify-center">
+              <svg class="w-10 h-10 text-success-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-heading font-bold text-dark-brown mb-2">Order Placed Successfully!</h2>
+            <p class="text-gray-600 mb-6">Thank you for your order. We'll send you a confirmation email shortly.</p>
+            <p class="text-sm text-gray-500 mb-6">Order ID: #KD-<span x-text="Math.random().toString(36).substring(2, 8).toUpperCase()"></span></p>
+            <a href="/" class="btn btn-primary">Continue Shopping</a>
+          </div>
+        </div>
+
+        <!-- Order Summary Sidebar -->
+        <div class="lg:col-span-1" x-show="!orderComplete">
+          <div class="bg-white rounded-2xl shadow-soft p-6 sticky top-4">
+            <h3 class="font-heading font-semibold text-dark-brown mb-4">Order Summary</h3>
+            <ul class="space-y-3 mb-4">
+              <template x-for="item in $store.cart.items" :key="item.id">
+                <li class="flex justify-between text-sm">
+                  <span class="text-gray-600"><span x-text="item.name"></span> × <span x-text="item.quantity"></span></span>
+                  <span class="font-medium text-dark-brown">NPR <span x-text="item.price * item.quantity"></span></span>
+                </li>
+              </template>
+            </ul>
+            <div class="border-t border-gray-100 pt-4 space-y-2">
+              <div class="flex justify-between text-sm"><span class="text-gray-500">Subtotal</span><span class="font-medium" x-text="$store.cart.formattedSubtotal"></span></div>
+              <div class="flex justify-between text-sm"><span class="text-gray-500">Shipping</span><span class="font-medium" :class="$store.cart.shippingCost === 0 ? 'text-success-green' : ''" x-text="$store.cart.formattedShipping"></span></div>
+            </div>
+            <div class="flex justify-between text-lg font-bold border-t border-gray-100 mt-4 pt-4">
+              <span class="text-dark-brown">Total</span>
+              <span class="text-accent-orange" x-text="$store.cart.formattedTotal"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer mt-auto">
+    <div class="footer-bottom"><div class="container-dairy"><div class="footer-bottom-content"><p class="footer-copyright">&copy; 2024 KHAIRAWANG DAIRY. All rights reserved.</p></div></div></div>
+  </footer>
+
+  <!-- Toast Notifications -->
+  <div class="fixed bottom-4 right-4 z-50 space-y-2">
+    <template x-for="toast in $store.toast.toasts" :key="toast.id">
+      <div x-show="toast.visible" x-transition :class="$store.toast.getColorClasses(toast.type)" class="flex items-center gap-3 px-4 py-3 rounded-xl shadow-soft-lg min-w-[280px] max-w-sm">
+        <span x-html="$store.toast.getIcon(toast.type)"></span>
+        <span x-text="toast.message" class="flex-1 text-sm font-medium"></span>
+        <button @click="$store.toast.dismiss(toast.id)" class="flex-shrink-0 opacity-80 hover:opacity-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+      </div>
+    </template>
+  </div>
+</body>
+</html>
