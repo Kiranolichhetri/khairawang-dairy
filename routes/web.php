@@ -34,8 +34,14 @@ use App\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Controllers\ContactController;
 use App\Controllers\NewsletterController;
 use App\Controllers\NotificationController;
+use App\Controllers\CouponController;
+use App\Controllers\BlogController;
+use App\Controllers\SeoController;
 use App\Controllers\Admin\NewsletterController as AdminNewsletterController;
 use App\Controllers\Admin\ContactController as AdminContactController;
+use App\Controllers\Admin\CouponController as AdminCouponController;
+use App\Controllers\Admin\BlogController as AdminBlogController;
+use App\Controllers\Admin\InventoryController as AdminInventoryController;
 
 /** @var Router $router */
 
@@ -83,6 +89,11 @@ $router->delete('/cart/remove/{id}', [CartController::class, 'remove'], 'cart.re
 $router->delete('/cart/clear', [CartController::class, 'clear'], 'cart.clear');
 $router->post('/cart/sync', [CartController::class, 'sync'], 'cart.sync');
 $router->get('/cart/count', [CartController::class, 'count'], 'cart.count');
+
+// Coupon Routes (Cart)
+$router->post('/cart/coupon/apply', [CouponController::class, 'apply'], 'cart.coupon.apply');
+$router->delete('/cart/coupon/remove', [CouponController::class, 'remove'], 'cart.coupon.remove');
+$router->post('/cart/coupon/validate', [CouponController::class, 'validate'], 'cart.coupon.validate');
 
 // ==================================================
 // Authentication Routes
@@ -271,6 +282,36 @@ $router->group([
     $router->post('/contacts/{id}/resolve', [AdminContactController::class, 'resolve'], 'admin.contacts.resolve');
     $router->delete('/contacts/{id}', [AdminContactController::class, 'delete'], 'admin.contacts.delete');
     
+    // Coupons management
+    $router->get('/coupons', [AdminCouponController::class, 'index'], 'admin.coupons.index');
+    $router->get('/coupons/create', [AdminCouponController::class, 'create'], 'admin.coupons.create');
+    $router->post('/coupons', [AdminCouponController::class, 'store'], 'admin.coupons.store');
+    $router->get('/coupons/generate-code', [AdminCouponController::class, 'generateCode'], 'admin.coupons.generate-code');
+    $router->get('/coupons/{id}/edit', [AdminCouponController::class, 'edit'], 'admin.coupons.edit');
+    $router->put('/coupons/{id}', [AdminCouponController::class, 'update'], 'admin.coupons.update');
+    $router->delete('/coupons/{id}', [AdminCouponController::class, 'delete'], 'admin.coupons.delete');
+    $router->post('/coupons/{id}/toggle-status', [AdminCouponController::class, 'toggleStatus'], 'admin.coupons.toggle');
+    
+    // Blog management
+    $router->get('/blog', [AdminBlogController::class, 'index'], 'admin.blog.index');
+    $router->get('/blog/create', [AdminBlogController::class, 'create'], 'admin.blog.create');
+    $router->post('/blog', [AdminBlogController::class, 'store'], 'admin.blog.store');
+    $router->get('/blog/categories', [AdminBlogController::class, 'categories'], 'admin.blog.categories');
+    $router->post('/blog/categories', [AdminBlogController::class, 'storeCategory'], 'admin.blog.categories.store');
+    $router->put('/blog/categories/{id}', [AdminBlogController::class, 'updateCategory'], 'admin.blog.categories.update');
+    $router->delete('/blog/categories/{id}', [AdminBlogController::class, 'deleteCategory'], 'admin.blog.categories.delete');
+    $router->get('/blog/{id}/edit', [AdminBlogController::class, 'edit'], 'admin.blog.edit');
+    $router->put('/blog/{id}', [AdminBlogController::class, 'update'], 'admin.blog.update');
+    $router->delete('/blog/{id}', [AdminBlogController::class, 'delete'], 'admin.blog.delete');
+    $router->post('/blog/{id}/toggle-publish', [AdminBlogController::class, 'togglePublish'], 'admin.blog.toggle');
+    
+    // Inventory management
+    $router->get('/inventory', [AdminInventoryController::class, 'index'], 'admin.inventory.index');
+    $router->get('/inventory/low-stock', [AdminInventoryController::class, 'lowStock'], 'admin.inventory.low-stock');
+    $router->get('/inventory/movements', [AdminInventoryController::class, 'movements'], 'admin.inventory.movements');
+    $router->post('/inventory/{productId}/adjust', [AdminInventoryController::class, 'adjust'], 'admin.inventory.adjust');
+    $router->post('/inventory/bulk-adjust', [AdminInventoryController::class, 'bulkAdjust'], 'admin.inventory.bulk-adjust');
+    
     // Settings
     $router->get('/settings', [AdminSettingsController::class, 'index'], 'admin.settings.index');
     $router->post('/settings', [AdminSettingsController::class, 'update'], 'admin.settings.update');
@@ -299,6 +340,23 @@ $router->get('/contact/thank-you', [ContactController::class, 'thankYou'], 'cont
 
 $router->post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'], 'newsletter.subscribe');
 $router->get('/newsletter/unsubscribe/{token}', [NewsletterController::class, 'unsubscribe'], 'newsletter.unsubscribe');
+
+// ==================================================
+// Blog Routes
+// ==================================================
+
+$router->get('/blog', [BlogController::class, 'index'], 'blog.index');
+$router->get('/blog/search', [BlogController::class, 'search'], 'blog.search');
+$router->get('/blog/category/{slug}', [BlogController::class, 'category'], 'blog.category');
+$router->get('/blog/tag/{slug}', [BlogController::class, 'tag'], 'blog.tag');
+$router->get('/blog/{slug}', [BlogController::class, 'show'], 'blog.show');
+
+// ==================================================
+// SEO Routes
+// ==================================================
+
+$router->get('/sitemap.xml', [SeoController::class, 'sitemap'], 'seo.sitemap');
+$router->get('/robots.txt', [SeoController::class, 'robots'], 'seo.robots');
 
 $router->get('/terms', function(Request $request) {
     return new Response('<h1>Terms & Conditions</h1>');
