@@ -11,6 +11,7 @@ echo 'Products';
 $view->endSection();
 ?>
 
+<?php $view->section('content'); ?>
 <div class="min-h-screen bg-cream py-8" x-data="productListing">
     <div class="container-dairy">
         <!-- Page Header -->
@@ -253,3 +254,4 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 </script>
+<?php $view->endSection(); ?>

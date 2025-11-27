@@ -56,7 +56,9 @@ class View
         
         // If layout is set, render layout with content
         if ($this->layout !== null) {
-            $this->sections['content'] = $content;
+            if (!isset($this->sections['content'])) {
+                $this->sections['content'] = $content;
+            }
             $content = $this->renderTemplate($this->layout, $data, true);
         }
         
