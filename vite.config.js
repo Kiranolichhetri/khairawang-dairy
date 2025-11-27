@@ -17,6 +17,13 @@ export default defineConfig({
   css: {
     postcss: './postcss.config.js',
   },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./resources', import.meta.url)),
+      '@js': fileURLToPath(new URL('./resources/js', import.meta.url)),
+      '@css': fileURLToPath(new URL('./resources/css', import.meta.url)),
+    },
+  },
   server: {
     port: 3000,
     open: true,

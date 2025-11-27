@@ -3,15 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="KHAIRAWANG DAIRY - Premium fresh dairy products delivered from our farm to your table. Explore our collection of milk, cheese, yogurt, and more.">
-  <meta name="keywords" content="dairy, milk, cheese, yogurt, fresh, organic, farm, Nepal">
-  <meta name="author" content="KHAIRAWANG DAIRY">
-  
-  <!-- Open Graph -->
-  <meta property="og:title" content="KHAIRAWANG DAIRY - Fresh From Farm To Table">
-  <meta property="og:description" content="Premium fresh dairy products delivered from our farm to your table.">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="en_US">
+  <meta name="description" content="KHAIRAWANG DAIRY - Premium fresh dairy products delivered from our farm to your table.">
+  <meta name="robots" content="noindex, nofollow">
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥛</text></svg>">
@@ -30,38 +23,41 @@
   <title>{{title}} - KHAIRAWANG DAIRY</title>
   
   <style>
-    /* Cloak for Alpine.js */
     [x-cloak] { display: none !important; }
   </style>
 </head>
-<body class="font-body text-dark-brown bg-cream antialiased" x-data>
-  <!-- Skip to main content for accessibility -->
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent-orange text-white px-4 py-2 rounded-lg z-50">
-    Skip to main content
-  </a>
+<body class="font-body text-dark-brown bg-cream antialiased min-h-screen flex items-center justify-center" x-data>
+  <!-- Auth Container -->
+  <div class="w-full max-w-md px-4 py-8">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <a href="/" class="inline-flex items-center gap-2 font-heading font-bold text-2xl text-dark-brown">
+        <span class="text-4xl">🥛</span>
+        <span>KHAIRAWANG DAIRY</span>
+      </a>
+      <p class="mt-2 text-gray-500">Fresh From Farm To Table</p>
+    </div>
 
-  <!-- Header Component with Alpine.js Navigation -->
-  <!-- Include header.html component here -->
+    <!-- Auth Card -->
+    <div class="bg-white rounded-2xl shadow-soft-lg p-8">
+      {{content}}
+    </div>
 
-  <!-- Main Content -->
-  <main id="main-content">
-    {{content}}
-  </main>
+    <!-- Footer Links -->
+    <div class="mt-8 text-center text-sm text-gray-500">
+      <a href="/" class="hover:text-accent-orange transition-colors">← Back to Home</a>
+      <span class="mx-2">•</span>
+      <a href="/contact" class="hover:text-accent-orange transition-colors">Need Help?</a>
+    </div>
 
-  <!-- Footer Component -->
-  <!-- Include footer.html component here -->
-
-  <!-- Cart Drawer -->
-  <!-- Include cart-drawer.html component here -->
-
-  <!-- Search Modal -->
-  <!-- Include search-modal.html component here -->
+    <!-- Copyright -->
+    <p class="mt-4 text-center text-xs text-gray-400">
+      &copy; 2024 KHAIRAWANG DAIRY. All rights reserved.
+    </p>
+  </div>
 
   <!-- Toast Notifications Container -->
-  <div x-data
-       class="fixed bottom-4 right-4 z-50 space-y-2"
-       aria-live="polite"
-       aria-label="Notifications">
+  <div class="fixed bottom-4 right-4 z-50 space-y-2" aria-live="polite" aria-label="Notifications">
     <template x-for="toast in $store.toast.toasts" :key="toast.id">
       <div x-show="toast.visible"
            x-transition:enter="transition ease-out duration-300 transform"

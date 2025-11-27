@@ -24,9 +24,17 @@
   <!-- Styles - Vite will process this path -->
   <link rel="stylesheet" href="/resources/css/app.css">
   
+  <!-- Alpine.js and App JS -->
+  <script type="module" src="/resources/js/app.js"></script>
+  
   <title>Fresh From Farm To Table - KHAIRAWANG DAIRY</title>
+  
+  <style>
+    /* Cloak for Alpine.js */
+    [x-cloak] { display: none !important; }
+  </style>
 </head>
-<body class="font-body text-dark-brown bg-cream antialiased">
+<body class="font-body text-dark-brown bg-cream antialiased" x-data>
   <!-- Skip to main content for accessibility -->
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent-orange text-white px-4 py-2 rounded-lg z-50">
     Skip to main content

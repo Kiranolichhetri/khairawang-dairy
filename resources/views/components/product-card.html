@@ -1,0 +1,101 @@
+<!-- ========================================
+     Product Card Component with Alpine.js
+     ======================================== -->
+<article x-data="productCard({
+           id: productId,
+           name: productName,
+           price: productPrice,
+           oldPrice: productOldPrice,
+           image: productImage,
+           badge: productBadge,
+           category: productCategory
+         })"
+         @mouseenter="isHovered = true"
+         @mouseleave="isHovered = false"
+         class="product-card group">
+  
+  <!-- Image Container -->
+  <div class="product-card-image relative overflow-hidden">
+    <!-- Main Image -->
+    <img :src="product.image" 
+         :alt="product.name"
+         class="w-full aspect-product object-cover transition-transform duration-500 group-hover:scale-105"
+         loading="lazy">
+    
+    <!-- Badge -->
+    <div x-show="product.badge" class="product-card-badge absolute top-4 left-4">
+      <span class="badge" 
+            :class="{
+              'badge-success': product.badge === 'Fresh' || product.badge === 'New',
+              'badge-primary': product.badge === 'Popular' || product.badge === 'Bestseller'
+            }"
+            x-text="product.badge">
+      </span>
+    </div>
+
+    <!-- Quick Actions Overlay -->
+    <div class="absolute inset-0 bg-dark-brown bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+      <!-- Quick View -->
+      <button @click.prevent="openQuickView()"
+              class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-dark-brown hover:bg-accent-orange hover:text-white transition-colors transform translate-y-4 group-hover:translate-y-0 duration-300"
+              aria-label="Quick view">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+        </svg>
+      </button>
+      
+      <!-- Add to Cart -->
+      <button @click.prevent="addToCart()"
+              class="w-10 h-10 bg-accent-orange rounded-full flex items-center justify-center text-white hover:bg-dark-brown transition-colors transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75"
+              aria-label="Add to cart">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+      </button>
+      
+      <!-- Wishlist -->
+      <button class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-dark-brown hover:bg-error-red hover:text-white transition-colors transform translate-y-4 group-hover:translate-y-0 duration-300 delay-150"
+              aria-label="Add to wishlist">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Product Info -->
+  <div class="product-card-body">
+    <!-- Category -->
+    <p x-show="product.category" 
+       x-text="product.category"
+       class="text-xs text-gray-500 uppercase tracking-wide mb-1">
+    </p>
+    
+    <!-- Name -->
+    <h3 class="product-card-name">
+      <a :href="'/products/' + product.id" 
+         x-text="product.name"
+         class="text-dark-brown hover:text-accent-orange transition-colors">
+      </a>
+    </h3>
+    
+    <!-- Price -->
+    <div class="product-card-price flex items-center gap-2">
+      <span class="text-accent-orange font-bold" x-text="formatPrice(product.price)"></span>
+      <span x-show="product.oldPrice" 
+            x-text="formatPrice(product.oldPrice)"
+            class="text-sm text-gray-400 line-through">
+      </span>
+    </div>
+
+    <!-- Add to Cart Button -->
+    <button @click="addToCart()"
+            class="btn btn-primary product-card-action w-full mt-4">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Add to Cart
+    </button>
+  </div>
+</article>
