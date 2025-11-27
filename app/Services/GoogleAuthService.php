@@ -46,6 +46,7 @@ class GoogleAuthService
      * Exchange authorization code for access token
      *
      * @return array<string, mixed>|null
+     * @throws \RuntimeException When cURL initialization fails
      */
     public function getAccessToken(string $code): ?array
     {
@@ -59,17 +60,21 @@ class GoogleAuthService
 
         $ch = curl_init('https://oauth2.googleapis.com/token');
         if ($ch === false) {
-            return null;
+            error_log('GoogleAuthService: Failed to initialize cURL for token exchange');
+            throw new \RuntimeException('Failed to initialize HTTP client');
         }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
+        $error = curl_error($ch);
         curl_close($ch);
 
         if ($response === false) {
+            error_log('GoogleAuthService: cURL request failed - ' . $error);
             return null;
         }
 
@@ -81,20 +86,25 @@ class GoogleAuthService
      * Get user info from Google using access token
      *
      * @return array<string, mixed>|null
+     * @throws \RuntimeException When cURL initialization fails
      */
     public function getUserInfo(string $accessToken): ?array
     {
         $ch = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
         if ($ch === false) {
-            return null;
+            error_log('GoogleAuthService: Failed to initialize cURL for user info');
+            throw new \RuntimeException('Failed to initialize HTTP client');
         }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $accessToken]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
+        $error = curl_error($ch);
         curl_close($ch);
 
         if ($response === false) {
+            error_log('GoogleAuthService: cURL request failed - ' . $error);
             return null;
         }
 

@@ -351,16 +351,22 @@ class AuthController
                 throw new \Exception('Failed to get user info');
             }
 
+            // Validate Google ID exists
+            $googleId = $googleUser['id'] ?? null;
+            if (empty($googleId)) {
+                throw new \Exception('Invalid Google user data');
+            }
+
             // Find or create user
             $user = User::findByEmail($googleUser['email']);
             
             if (!$user) {
-                // Create new user
+                // Create new user with random secure password for OAuth users
                 $result = $this->authService->register([
                     'name' => $googleUser['name'] ?? $googleUser['email'],
                     'email' => $googleUser['email'],
                     'phone' => '',
-                    'password' => bin2hex(random_bytes(16)), // Random password
+                    'password' => bin2hex(random_bytes(32)),
                 ]);
                 
                 if (!$result['success']) {
@@ -372,7 +378,7 @@ class AuthController
                 if ($user) {
                     // Update with Google-specific info
                     $user->update([
-                        'google_id' => $googleUser['id'] ?? null,
+                        'google_id' => $googleId,
                         'avatar' => $googleUser['picture'] ?? null,
                         'email_verified_at' => date('Y-m-d H:i:s'), // Auto-verify
                     ]);
@@ -381,7 +387,7 @@ class AuthController
                 // Update google_id if not set
                 if (empty($user->attributes['google_id'])) {
                     $user->update([
-                        'google_id' => $googleUser['id'] ?? null,
+                        'google_id' => $googleId,
                         'avatar' => $user->attributes['avatar'] ?? $googleUser['picture'] ?? null,
                     ]);
                 }
