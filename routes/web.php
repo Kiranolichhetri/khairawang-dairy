@@ -19,6 +19,11 @@ use App\Controllers\OrderController;
 use App\Controllers\EsewaController;
 use App\Controllers\InvoiceController;
 use App\Controllers\AuthController;
+use App\Controllers\ProfileController;
+use App\Controllers\AddressController;
+use App\Controllers\WishlistController;
+use App\Controllers\ReviewController;
+use App\Controllers\Account\OrderController as AccountOrderController;
 use App\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Controllers\Admin\ProductController as AdminProductController;
 use App\Controllers\Admin\CategoryController as AdminCategoryController;
@@ -101,23 +106,63 @@ $router->post('/logout', [AuthController::class, 'logout'], 'logout');
 // ==================================================
 
 $router->group(['prefix' => '/account', 'middleware' => [\App\Middleware\AuthMiddleware::class]], function(Router $router) {
-    $router->get('/', function(Request $request) {
-        return Response::json(['message' => 'Account dashboard']);
-    }, 'account.dashboard');
+    // Dashboard
+    $router->get('/', [ProfileController::class, 'dashboard'], 'account.dashboard');
     
-    $router->get('/orders', [OrderController::class, 'index'], 'account.orders');
-    $router->get('/orders/{orderNumber}', [OrderController::class, 'show'], 'account.orders.show');
-    $router->get('/orders/{orderNumber}/track', [OrderController::class, 'track'], 'account.orders.track');
-    $router->post('/orders/{orderNumber}/cancel', [OrderController::class, 'cancel'], 'account.orders.cancel');
+    // Profile Management
+    $router->get('/profile', [ProfileController::class, 'show'], 'account.profile');
+    $router->get('/profile/edit', [ProfileController::class, 'edit'], 'account.profile.edit');
+    $router->post('/profile', [ProfileController::class, 'update'], 'account.profile.update');
+    $router->get('/password', [ProfileController::class, 'changePassword'], 'account.password');
+    $router->post('/password', [ProfileController::class, 'updatePassword'], 'account.password.update');
+    $router->post('/avatar', [ProfileController::class, 'uploadAvatar'], 'account.avatar.upload');
+    $router->delete('/avatar', [ProfileController::class, 'deleteAvatar'], 'account.avatar.delete');
+    $router->delete('/delete', [ProfileController::class, 'deleteAccount'], 'account.delete');
     
-    $router->get('/profile', function(Request $request) {
-        return Response::json(['message' => 'Profile settings']);
-    }, 'account.profile');
+    // Address Management
+    $router->get('/addresses', [AddressController::class, 'index'], 'account.addresses');
+    $router->get('/addresses/create', [AddressController::class, 'create'], 'account.addresses.create');
+    $router->post('/addresses', [AddressController::class, 'store'], 'account.addresses.store');
+    $router->get('/addresses/{id}/edit', [AddressController::class, 'edit'], 'account.addresses.edit');
+    $router->put('/addresses/{id}', [AddressController::class, 'update'], 'account.addresses.update');
+    $router->delete('/addresses/{id}', [AddressController::class, 'delete'], 'account.addresses.delete');
+    $router->post('/addresses/{id}/default', [AddressController::class, 'setDefault'], 'account.addresses.default');
     
-    $router->post('/profile', function(Request $request) {
-        return Response::json(['message' => 'Profile updated']);
-    }, 'account.profile.update');
+    // Wishlist Management
+    $router->get('/wishlist', [WishlistController::class, 'index'], 'account.wishlist');
+    $router->post('/wishlist/{productId}', [WishlistController::class, 'add'], 'account.wishlist.add');
+    $router->delete('/wishlist/{productId}', [WishlistController::class, 'remove'], 'account.wishlist.remove');
+    $router->post('/wishlist/{productId}/toggle', [WishlistController::class, 'toggle'], 'account.wishlist.toggle');
+    $router->post('/wishlist/{productId}/move-to-cart', [WishlistController::class, 'moveToCart'], 'account.wishlist.move');
+    $router->delete('/wishlist/clear', [WishlistController::class, 'clear'], 'account.wishlist.clear');
+    
+    // Order Management
+    $router->get('/orders', [AccountOrderController::class, 'index'], 'account.orders');
+    $router->get('/orders/{orderNumber}', [AccountOrderController::class, 'show'], 'account.orders.show');
+    $router->get('/orders/{orderNumber}/track', [AccountOrderController::class, 'track'], 'account.orders.track');
+    $router->post('/orders/{orderNumber}/cancel', [AccountOrderController::class, 'cancel'], 'account.orders.cancel');
+    $router->post('/orders/{orderNumber}/reorder', [AccountOrderController::class, 'reorder'], 'account.orders.reorder');
+    $router->get('/orders/{orderNumber}/invoice', [AccountOrderController::class, 'downloadInvoice'], 'account.orders.invoice');
 });
+
+// ==================================================
+// Wishlist API Routes (for AJAX)
+// ==================================================
+
+$router->get('/api/wishlist/count', [WishlistController::class, 'count'], 'api.wishlist.count');
+$router->get('/api/wishlist/{productId}/check', [WishlistController::class, 'check'], 'api.wishlist.check');
+$router->post('/api/wishlist/sync', [WishlistController::class, 'sync'], 'api.wishlist.sync');
+
+// ==================================================
+// Review Routes
+// ==================================================
+
+$router->get('/products/{slug}/reviews', [ReviewController::class, 'index'], 'reviews.index');
+$router->post('/products/{slug}/reviews', [ReviewController::class, 'store'], 'reviews.store');
+$router->get('/reviews/{id}/edit', [ReviewController::class, 'edit'], 'reviews.edit');
+$router->put('/reviews/{id}', [ReviewController::class, 'update'], 'reviews.update');
+$router->delete('/reviews/{id}', [ReviewController::class, 'delete'], 'reviews.delete');
+$router->post('/reviews/{id}/helpful', [ReviewController::class, 'helpful'], 'reviews.helpful');
 
 // ==================================================
 // Checkout Routes
