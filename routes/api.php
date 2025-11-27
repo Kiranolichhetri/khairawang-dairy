@@ -76,20 +76,15 @@ $router->group(['prefix' => '/api/v1'], function(Router $router) {
     $router->post('/orders/{orderNumber}/cancel', [OrderController::class, 'cancel'], 'api.orders.cancel');
     
     // Newsletter subscription
-    $router->post('/newsletter/subscribe', function(Request $request) {
-        return Response::json([
-            'success' => true,
-            'message' => 'Successfully subscribed to newsletter',
-        ]);
-    }, 'api.newsletter.subscribe');
+    $router->post('/newsletter/subscribe', [\App\Controllers\NewsletterController::class, 'subscribe'], 'api.newsletter.subscribe');
     
     // Contact form
-    $router->post('/contact', function(Request $request) {
-        return Response::json([
-            'success' => true,
-            'message' => 'Message sent successfully',
-        ]);
-    }, 'api.contact');
+    $router->post('/contact', [\App\Controllers\ContactController::class, 'submit'], 'api.contact');
+    
+    // Notifications API
+    $router->get('/notifications', [\App\Controllers\NotificationController::class, 'index'], 'api.notifications');
+    $router->post('/notifications/{id}/read', [\App\Controllers\NotificationController::class, 'markAsRead'], 'api.notifications.read');
+    $router->get('/notifications/unread-count', [\App\Controllers\NotificationController::class, 'unreadCount'], 'api.notifications.unread-count');
 });
 
 // ==================================================
