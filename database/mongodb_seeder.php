@@ -131,13 +131,17 @@ try {
     // Check if admin already exists
     $existingAdmin = $usersCollection->findOne(['email' => 'admin@khairawangdairy.com']);
     
+    // SECURITY NOTE: The default password 'admin123' is for initial setup only.
+    // It should be changed immediately after first login in production environments.
+    $defaultAdminPassword = 'admin123';
+    
     if ($existingAdmin) {
         echo "  Admin user already exists, updating...\n";
         $usersCollection->updateOne(
             ['email' => 'admin@khairawangdairy.com'],
             ['$set' => [
                 'role_id' => (string) $adminRoleId,
-                'password' => password_hash('admin123', PASSWORD_ARGON2ID, [
+                'password' => password_hash($defaultAdminPassword, PASSWORD_ARGON2ID, [
                     'memory_cost' => 65536,
                     'time_cost' => 4,
                     'threads' => 3,
@@ -151,7 +155,7 @@ try {
         $adminUser = [
             'role_id' => (string) $adminRoleId,
             'email' => 'admin@khairawangdairy.com',
-            'password' => password_hash('admin123', PASSWORD_ARGON2ID, [
+            'password' => password_hash($defaultAdminPassword, PASSWORD_ARGON2ID, [
                 'memory_cost' => 65536,
                 'time_cost' => 4,
                 'threads' => 3,
@@ -273,7 +277,9 @@ try {
     
     echo "Admin Login Credentials:\n";
     echo "  Email: admin@khairawangdairy.com\n";
-    echo "  Password: admin123\n\n";
+    echo "  Password: admin123\n";
+    echo "\n  IMPORTANT: Change this password immediately\n";
+    echo "  after first login in production!\n\n";
     
 } catch (Exception $e) {
     echo "\nError: " . $e->getMessage() . "\n";
