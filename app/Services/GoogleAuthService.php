@@ -20,9 +20,9 @@ class GoogleAuthService
     public function __construct()
     {
         $app = Application::getInstance();
-        $this->clientId = $app?->config('services.google.client_id', '') ?? $_ENV['GOOGLE_CLIENT_ID'] ?? '';
-        $this->clientSecret = $app?->config('services.google.client_secret', '') ?? $_ENV['GOOGLE_CLIENT_SECRET'] ?? '';
-        $this->redirectUri = $app?->config('services.google.redirect_uri', '') ?? $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
+        $this->clientId = $app?->config('app.services.google.client_id', '') ?? $_ENV['GOOGLE_CLIENT_ID'] ?? '';
+        $this->clientSecret = $app?->config('app.services.google.client_secret', '') ?? $_ENV['GOOGLE_CLIENT_SECRET'] ?? '';
+        $this->redirectUri = $app?->config('app.services.google.redirect_uri', '') ?? $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
     }
 
     /**

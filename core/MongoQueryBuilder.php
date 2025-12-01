@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Core;
 
 use MongoDB\BSON\ObjectId;
-use MongoDB\BSON\Regex;
 use Core\Exceptions\DatabaseException;
 
 /**
@@ -113,8 +112,11 @@ class MongoQueryBuilder
         
         if ($operator === 'LIKE') {
             // Convert SQL LIKE to MongoDB regex
-            $pattern = str_replace(['%', '_'], ['.*', '.'], preg_quote($value, '/'));
-            $value = new Regex($pattern, 'i');
+            // First escape all regex special characters
+            $escaped = preg_quote($value, '/');
+            // Then convert SQL wildcards: % -> .* and _ -> .
+            // We need to un-escape the SQL wildcards that were just escaped
+            $pattern = str_replace(['\\%', '\\_'], ['.*', '.'], $escaped);
             $this->filter[$field] = ['$regex' => $pattern, '$options' => 'i'];
         } elseif ($mongoOperator === null) {
             $this->filter[$field] = $value;
@@ -559,9 +561,31 @@ class MongoQueryBuilder
      */
     public function __clone(): void
     {
-        $this->projection = $this->projection;
-        $this->filter = $this->filter;
-        $this->sort = $this->sort;
+        // Deep copy arrays to prevent shared references
+        $this->projection = array_merge([], $this->projection);
+        $this->filter = $this->deepCopyArray($this->filter);
+        $this->sort = array_merge([], $this->sort);
+    }
+
+    /**
+     * Deep copy an array
+     * 
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private function deepCopyArray(array $array): array
+    {
+        $copy = [];
+        foreach ($array as $key => $value) {
+            if (is_array($value)) {
+                $copy[$key] = $this->deepCopyArray($value);
+            } elseif (is_object($value)) {
+                $copy[$key] = clone $value;
+            } else {
+                $copy[$key] = $value;
+            }
+        }
+        return $copy;
     }
 
     /**

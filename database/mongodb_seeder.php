@@ -46,7 +46,16 @@ echo "KHAIRAWANG DAIRY - MongoDB Seeder\n";
 echo "===========================================\n\n";
 
 echo "Connecting to MongoDB...\n";
-echo "URI: " . preg_replace('/:[^:@]+@/', ':****@', $mongoUri) . "\n";
+
+// Mask credentials in URI for display
+$maskedUri = $mongoUri;
+if (preg_match('#^(mongodb(?:\+srv)?://)([^:]+):([^@]+)@(.+)$#', $mongoUri, $matches)) {
+    $maskedUri = $matches[1] . $matches[2] . ':****@' . $matches[4];
+} elseif (preg_match('#^(mongodb(?:\+srv)?://)(.+)$#', $mongoUri, $matches)) {
+    // No credentials in URI
+    $maskedUri = $mongoUri;
+}
+echo "URI: {$maskedUri}\n";
 echo "Database: {$database}\n\n";
 
 try {
