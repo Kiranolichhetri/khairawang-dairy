@@ -89,4 +89,15 @@ return [
         'allowed_types' => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
         'path' => 'uploads',
     ],
+
+    /**
+     * Third-party services
+     */
+    'services' => [
+        'google' => [
+            'client_id' => env('GOOGLE_CLIENT_ID', ''),
+            'client_secret' => env('GOOGLE_CLIENT_SECRET', ''),
+            'redirect_uri' => env('GOOGLE_REDIRECT_URI', ''),
+        ],
+    ],
 ];

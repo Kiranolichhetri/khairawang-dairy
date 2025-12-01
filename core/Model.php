@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace Core;
 
 use Core\Exceptions\ModelException;
+use MongoDB\BSON\ObjectId;
 
 /**
  * Base Model Class (Active Record Pattern)
  * 
  * Provides CRUD operations, relationships, soft deletes, and timestamps.
+ * Supports both MySQL (via PDO) and MongoDB backends.
  */
 abstract class Model
 {
-    /** @var string Table name */
+    /** @var string Table/Collection name */
     protected static string $table = '';
     
     /** @var string Primary key column */
@@ -57,6 +59,9 @@ abstract class Model
     
     /** @var Database|null Database instance */
     protected static ?Database $db = null;
+    
+    /** @var MongoDB|null MongoDB instance */
+    protected static ?MongoDB $mongo = null;
 
     /**
      * Create a new model instance
@@ -77,6 +82,23 @@ abstract class Model
     }
 
     /**
+     * Set the MongoDB connection
+     */
+    public static function setMongoDB(MongoDB $mongo): void
+    {
+        self::$mongo = $mongo;
+    }
+
+    /**
+     * Check if MongoDB is the default connection
+     */
+    protected static function isMongoDb(): bool
+    {
+        $app = Application::getInstance();
+        return $app?->isMongoDbDefault() ?? false;
+    }
+
+    /**
      * Get the database connection
      */
     protected static function db(): Database
@@ -91,6 +113,23 @@ abstract class Model
         }
         
         return self::$db;
+    }
+
+    /**
+     * Get the MongoDB connection
+     */
+    protected static function mongo(): MongoDB
+    {
+        if (self::$mongo === null) {
+            $app = Application::getInstance();
+            if ($app !== null) {
+                self::$mongo = $app->mongo();
+            } else {
+                throw new ModelException('MongoDB connection not set');
+            }
+        }
+        
+        return self::$mongo;
     }
 
     /**
@@ -117,9 +156,22 @@ abstract class Model
 
     /**
      * Create a new query builder for the model
+     * 
+     * @return QueryBuilder|MongoQueryBuilder
      */
-    public static function query(): QueryBuilder
+    public static function query(): QueryBuilder|MongoQueryBuilder
     {
+        if (static::isMongoDb()) {
+            $query = (new MongoQueryBuilder(static::mongo()))->collection(static::getTable());
+            
+            // Apply soft delete scope by default
+            if (static::$softDeletes) {
+                $query->whereNull(static::$deletedAtColumn);
+            }
+            
+            return $query;
+        }
+        
         $query = self::db()->table(static::getTable());
         
         // Apply soft delete scope by default
@@ -135,7 +187,25 @@ abstract class Model
      */
     public static function find(int|string $id): ?static
     {
-        $data = static::query()->find($id, static::$primaryKey);
+        if (static::isMongoDb()) {
+            $filter = [];
+            
+            // Handle MongoDB ObjectId or numeric id
+            if (MongoDB::isValidObjectId((string) $id)) {
+                $filter['_id'] = MongoDB::objectId((string) $id);
+            } else {
+                // For backwards compatibility with numeric IDs
+                $filter['id'] = is_numeric($id) ? (int) $id : $id;
+            }
+            
+            if (static::$softDeletes) {
+                $filter[static::$deletedAtColumn] = null;
+            }
+            
+            $data = static::mongo()->findOne(static::getTable(), $filter);
+        } else {
+            $data = static::query()->find($id, static::$primaryKey);
+        }
         
         if ($data === null) {
             return null;
@@ -258,33 +328,49 @@ abstract class Model
 
     /**
      * Where clause shortcut
+     * 
+     * @return QueryBuilder|MongoQueryBuilder
      */
-    public static function where(string $column, mixed $operator = null, mixed $value = null): QueryBuilder
+    public static function where(string $column, mixed $operator = null, mixed $value = null): QueryBuilder|MongoQueryBuilder
     {
         return static::query()->where($column, $operator, $value);
     }
 
     /**
      * Order by clause shortcut
+     * 
+     * @return QueryBuilder|MongoQueryBuilder
      */
-    public static function orderBy(string $column, string $direction = 'ASC'): QueryBuilder
+    public static function orderBy(string $column, string $direction = 'ASC'): QueryBuilder|MongoQueryBuilder
     {
         return static::query()->orderBy($column, $direction);
     }
 
     /**
      * Include soft deleted models
+     * 
+     * @return QueryBuilder|MongoQueryBuilder
      */
-    public static function withTrashed(): QueryBuilder
+    public static function withTrashed(): QueryBuilder|MongoQueryBuilder
     {
+        if (static::isMongoDb()) {
+            return (new MongoQueryBuilder(static::mongo()))->collection(static::getTable());
+        }
         return self::db()->table(static::getTable());
     }
 
     /**
      * Only soft deleted models
+     * 
+     * @return QueryBuilder|MongoQueryBuilder
      */
-    public static function onlyTrashed(): QueryBuilder
+    public static function onlyTrashed(): QueryBuilder|MongoQueryBuilder
     {
+        if (static::isMongoDb()) {
+            return (new MongoQueryBuilder(static::mongo()))
+                ->collection(static::getTable())
+                ->whereNotNull(static::$deletedAtColumn);
+        }
         return self::db()->table(static::getTable())
             ->whereNotNull(static::$deletedAtColumn);
     }
@@ -389,7 +475,7 @@ abstract class Model
             'float', 'double', 'decimal' => (float) $value,
             'string' => (string) $value,
             'bool', 'boolean' => (bool) $value,
-            'array', 'json' => is_string($value) ? json_decode($value, true) : $value,
+            'array', 'json' => is_string($value) ? json_decode($value, true) : (is_array($value) ? $value : []),
             'datetime' => $value instanceof \DateTimeInterface ? $value : new \DateTime($value),
             'date' => $value instanceof \DateTimeInterface ? $value : new \DateTime($value),
             default => $value,
@@ -409,23 +495,41 @@ abstract class Model
     }
 
     /**
+     * Update model with array of data
+     * 
+     * @param array<string, mixed> $data
+     */
+    public function update(array $data): bool
+    {
+        $this->fill($data);
+        return $this->save();
+    }
+
+    /**
      * Perform insert operation
      */
     protected function performInsert(): bool
     {
+        $now = date('Y-m-d H:i:s');
+        
         // Add timestamps
         if (static::$timestamps) {
-            $now = date('Y-m-d H:i:s');
             $this->attributes[static::$createdAtColumn] = $now;
             $this->attributes[static::$updatedAtColumn] = $now;
         }
         
-        // Prepare data (convert arrays to JSON)
+        // Prepare data
         $data = $this->prepareForDatabase();
         
-        $id = self::db()->insert(static::getTable(), $data);
+        if (static::isMongoDb()) {
+            $id = static::mongo()->insertOne(static::getTable(), $data);
+            $this->attributes['_id'] = $id;
+            $this->attributes['id'] = $id;
+        } else {
+            $id = self::db()->insert(static::getTable(), $data);
+            $this->attributes[static::$primaryKey] = $id;
+        }
         
-        $this->attributes[static::$primaryKey] = $id;
         $this->original = $this->attributes;
         $this->exists = true;
         
@@ -467,15 +571,43 @@ abstract class Model
             return true;
         }
         
-        self::db()->update(
-            static::getTable(),
-            $dirty,
-            [static::$primaryKey => $this->getKey()]
-        );
+        if (static::isMongoDb()) {
+            $filter = $this->getMongoIdFilter();
+            static::mongo()->updateOne(static::getTable(), $filter, $dirty);
+        } else {
+            self::db()->update(
+                static::getTable(),
+                $dirty,
+                [static::$primaryKey => $this->getKey()]
+            );
+        }
         
         $this->original = $this->attributes;
         
         return true;
+    }
+
+    /**
+     * Get MongoDB filter for current document
+     * 
+     * @return array<string, mixed>
+     */
+    protected function getMongoIdFilter(): array
+    {
+        if (isset($this->attributes['_id'])) {
+            $id = $this->attributes['_id'];
+            if (is_string($id) && MongoDB::isValidObjectId($id)) {
+                return ['_id' => MongoDB::objectId($id)];
+            }
+            return ['_id' => $id];
+        }
+        
+        // Fallback to numeric id
+        if (isset($this->attributes['id'])) {
+            return ['id' => $this->attributes['id']];
+        }
+        
+        throw new ModelException('Cannot determine document ID for update');
     }
 
     /**
@@ -493,8 +625,13 @@ abstract class Model
                 continue;
             }
             
-            // Convert arrays to JSON
-            if (is_array($value)) {
+            // Skip _id for MongoDB inserts
+            if (!$this->exists && $key === '_id') {
+                continue;
+            }
+            
+            // Convert arrays to JSON for MySQL
+            if (!static::isMongoDb() && is_array($value)) {
                 $value = json_encode($value);
             }
             
@@ -503,8 +640,8 @@ abstract class Model
                 $value = $value->format('Y-m-d H:i:s');
             }
             
-            // Convert booleans
-            if (is_bool($value)) {
+            // Convert booleans for MySQL
+            if (!static::isMongoDb() && is_bool($value)) {
                 $value = $value ? 1 : 0;
             }
             
@@ -560,7 +697,13 @@ abstract class Model
         }
         
         // Hard delete
-        self::db()->delete(static::getTable(), [static::$primaryKey => $this->getKey()]);
+        if (static::isMongoDb()) {
+            $filter = $this->getMongoIdFilter();
+            static::mongo()->deleteOne(static::getTable(), $filter);
+        } else {
+            self::db()->delete(static::getTable(), [static::$primaryKey => $this->getKey()]);
+        }
+        
         $this->exists = false;
         
         return true;
@@ -571,7 +714,13 @@ abstract class Model
      */
     public function forceDelete(): bool
     {
-        self::db()->delete(static::getTable(), [static::$primaryKey => $this->getKey()]);
+        if (static::isMongoDb()) {
+            $filter = $this->getMongoIdFilter();
+            static::mongo()->deleteOne(static::getTable(), $filter);
+        } else {
+            self::db()->delete(static::getTable(), [static::$primaryKey => $this->getKey()]);
+        }
+        
         $this->exists = false;
         
         return true;
@@ -588,11 +737,20 @@ abstract class Model
         
         $this->attributes[static::$deletedAtColumn] = null;
         
-        self::db()->update(
-            static::getTable(),
-            [static::$deletedAtColumn => null],
-            [static::$primaryKey => $this->getKey()]
-        );
+        if (static::isMongoDb()) {
+            $filter = $this->getMongoIdFilter();
+            static::mongo()->updateOne(
+                static::getTable(),
+                $filter,
+                [static::$deletedAtColumn => null]
+            );
+        } else {
+            self::db()->update(
+                static::getTable(),
+                [static::$deletedAtColumn => null],
+                [static::$primaryKey => $this->getKey()]
+            );
+        }
         
         return true;
     }
@@ -610,6 +768,10 @@ abstract class Model
      */
     public function getKey(): int|string|null
     {
+        // For MongoDB, prefer _id
+        if (static::isMongoDb()) {
+            return $this->attributes['_id'] ?? $this->attributes['id'] ?? null;
+        }
         return $this->attributes[static::$primaryKey] ?? null;
     }
 
@@ -622,7 +784,12 @@ abstract class Model
             return $this;
         }
         
-        $fresh = static::find($this->getKey());
+        $key = $this->getKey();
+        if ($key === null) {
+            return $this;
+        }
+        
+        $fresh = static::find($key);
         
         if ($fresh !== null) {
             $this->attributes = $fresh->attributes;
@@ -644,6 +811,12 @@ abstract class Model
         
         $relatedTable = (new $related())->getTable();
         
+        if (static::isMongoDb()) {
+            return static::mongo()->findOne($relatedTable, [
+                $foreignKey => $this->getAttribute($localKey)
+            ]);
+        }
+        
         return self::db()
             ->table($relatedTable)
             ->where($foreignKey, $this->getAttribute($localKey))
@@ -661,6 +834,12 @@ abstract class Model
         $localKey = $localKey ?? static::$primaryKey;
         
         $relatedTable = (new $related())->getTable();
+        
+        if (static::isMongoDb()) {
+            return static::mongo()->find($relatedTable, [
+                $foreignKey => $this->getAttribute($localKey)
+            ]);
+        }
         
         return self::db()
             ->table($relatedTable)
@@ -698,6 +877,20 @@ abstract class Model
         $foreignKey = $foreignKey ?? strtolower($reflection->getShortName()) . '_id';
         $ownerKey = $ownerKey ?? $relatedPrimaryKey;
         
+        if (static::isMongoDb()) {
+            $foreignValue = $this->getAttribute($foreignKey);
+            
+            // Handle ObjectId for _id lookups
+            if ($ownerKey === 'id' || $ownerKey === '_id') {
+                $ownerKey = '_id';
+                if (is_string($foreignValue) && MongoDB::isValidObjectId($foreignValue)) {
+                    $foreignValue = MongoDB::objectId($foreignValue);
+                }
+            }
+            
+            return static::mongo()->findOne($relatedTable, [$ownerKey => $foreignValue]);
+        }
+        
         return self::db()
             ->table($relatedTable)
             ->where($ownerKey, $this->getAttribute($foreignKey))
@@ -720,6 +913,25 @@ abstract class Model
         $relatedPivotKey = $relatedPivotKey ?? strtolower((new \ReflectionClass($related))->getShortName()) . '_id';
         
         $relatedTable = $instance->getTable();
+        
+        if (static::isMongoDb()) {
+            // For MongoDB, we need to do a lookup manually
+            $pivotDocs = static::mongo()->find($pivotTable, [
+                $foreignPivotKey => $this->getKey()
+            ]);
+            
+            $relatedIds = array_column($pivotDocs, $relatedPivotKey);
+            
+            if (empty($relatedIds)) {
+                return [];
+            }
+            
+            return static::mongo()->find($relatedTable, [
+                '_id' => ['$in' => array_map(function($id) {
+                    return is_string($id) && MongoDB::isValidObjectId($id) ? MongoDB::objectId($id) : $id;
+                }, $relatedIds)]
+            ]);
+        }
         
         return self::db()
             ->table($relatedTable)

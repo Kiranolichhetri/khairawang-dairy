@@ -54,9 +54,17 @@ class Application
         $this->container->singleton(Container::class, fn() => $this->container);
         $this->container->singleton(Router::class, fn() => $this->router);
         $this->container->singleton(Session::class, fn() => new Session());
+        
+        // Register database based on configuration
         $this->container->singleton(Database::class, function() {
             $dbConfig = $this->config('database', []);
             return new Database($dbConfig);
+        });
+        
+        // Register MongoDB
+        $this->container->singleton(MongoDB::class, function() {
+            $mongoConfig = $this->config('database.connections.mongodb', []);
+            return new MongoDB($mongoConfig);
         });
     }
 
@@ -218,11 +226,19 @@ class Application
     }
 
     /**
-     * Get database instance
+     * Get database instance (MySQL)
      */
     public function db(): Database
     {
         return $this->container->resolve(Database::class);
+    }
+
+    /**
+     * Get MongoDB instance
+     */
+    public function mongo(): MongoDB
+    {
+        return $this->container->resolve(MongoDB::class);
     }
 
     /**
@@ -231,5 +247,13 @@ class Application
     public function session(): Session
     {
         return $this->container->resolve(Session::class);
+    }
+
+    /**
+     * Check if MongoDB is the default connection
+     */
+    public function isMongoDbDefault(): bool
+    {
+        return $this->config('database.default', 'mysql') === 'mongodb';
     }
 }
