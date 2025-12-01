@@ -13,33 +13,24 @@ declare(strict_types=1);
 // Load autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Load environment variables
-$envFile = __DIR__ . '/../.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '#') === 0) continue;
-        if (strpos($line, '=') === false) continue;
-        list($name, $value) = explode('=', $line, 2);
-        $name = trim($name);
-        $value = trim($value);
-        // Remove quotes if present
-        if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
-            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
-            $value = substr($value, 1, -1);
-        }
-        $_ENV[$name] = $value;
-        putenv("{$name}={$value}");
-    }
-}
-
 use MongoDB\Client;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\UTCDateTime;
 
-// Get MongoDB connection details from environment
-$mongoUri = $_ENV['MONGO_URI'] ?? 'mongodb://localhost:27017';
+// Load environment variables using phpdotenv
+if (!class_exists('Dotenv\Dotenv')) {
+    die("❌ phpdotenv not installed. Run: composer require vlucas/phpdotenv\n");
+}
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
+
+$mongoUri = $_ENV['MONGO_URI'] ?? '';
 $database = $_ENV['MONGO_DATABASE'] ?? 'khairawang_dairy';
+
+if (empty($mongoUri)) {
+    die("❌ MONGO_URI is empty. Check your .env file.\n");
+}
 
 echo "===========================================\n";
 echo "KHAIRAWANG DAIRY - MongoDB Seeder\n";
@@ -51,9 +42,6 @@ echo "Connecting to MongoDB...\n";
 $maskedUri = $mongoUri;
 if (preg_match('#^(mongodb(?:\+srv)?://)([^:]+):([^@]+)@(.+)$#', $mongoUri, $matches)) {
     $maskedUri = $matches[1] . $matches[2] . ':****@' . $matches[4];
-} elseif (preg_match('#^(mongodb(?:\+srv)?://)(.+)$#', $mongoUri, $matches)) {
-    // No credentials in URI
-    $maskedUri = $mongoUri;
 }
 echo "URI: {$maskedUri}\n";
 echo "Database: {$database}\n\n";
@@ -70,8 +58,6 @@ try {
     echo "Seeding roles collection...\n";
     
     $rolesCollection = $db->selectCollection('roles');
-    
-    // Drop existing roles
     $rolesCollection->drop();
     
     $roles = [
@@ -117,7 +103,6 @@ try {
     $result = $rolesCollection->insertMany($roles);
     echo "  Inserted " . count($result->getInsertedIds()) . " roles\n";
     
-    // Get admin role ID
     $adminRole = $rolesCollection->findOne(['name' => 'admin']);
     $adminRoleId = $adminRole['_id'];
     
@@ -127,12 +112,7 @@ try {
     echo "\nSeeding admin user...\n";
     
     $usersCollection = $db->selectCollection('users');
-    
-    // Check if admin already exists
     $existingAdmin = $usersCollection->findOne(['email' => 'admin@khairawangdairy.com']);
-    
-    // SECURITY NOTE: The default password 'admin123' is for initial setup only.
-    // It should be changed immediately after first login in production environments.
     $defaultAdminPassword = 'admin123';
     
     if ($existingAdmin) {
@@ -207,69 +187,6 @@ try {
         }
     }
     echo "  Inserted {$insertedCount} settings\n";
-    
-    // =========================================
-    // Create Indexes
-    // =========================================
-    echo "\nCreating indexes...\n";
-    
-    // Users indexes
-    $usersCollection->createIndex(['email' => 1], ['unique' => true]);
-    $usersCollection->createIndex(['status' => 1]);
-    $usersCollection->createIndex(['role_id' => 1]);
-    $usersCollection->createIndex(['google_id' => 1]);
-    echo "  Created users indexes\n";
-    
-    // Products indexes
-    $productsCollection = $db->selectCollection('products');
-    $productsCollection->createIndex(['slug' => 1], ['unique' => true]);
-    $productsCollection->createIndex(['status' => 1]);
-    $productsCollection->createIndex(['category_id' => 1]);
-    $productsCollection->createIndex(['featured' => 1]);
-    $productsCollection->createIndex(['deleted_at' => 1]);
-    $productsCollection->createIndex(
-        ['name_en' => 'text', 'name_ne' => 'text', 'description_en' => 'text'],
-        ['name' => 'product_search']
-    );
-    echo "  Created products indexes\n";
-    
-    // Orders indexes
-    $ordersCollection = $db->selectCollection('orders');
-    $ordersCollection->createIndex(['order_number' => 1], ['unique' => true]);
-    $ordersCollection->createIndex(['user_id' => 1]);
-    $ordersCollection->createIndex(['status' => 1]);
-    $ordersCollection->createIndex(['payment_status' => 1]);
-    $ordersCollection->createIndex(['created_at' => -1]);
-    echo "  Created orders indexes\n";
-    
-    // Categories indexes
-    $categoriesCollection = $db->selectCollection('categories');
-    $categoriesCollection->createIndex(['slug' => 1], ['unique' => true]);
-    $categoriesCollection->createIndex(['status' => 1]);
-    $categoriesCollection->createIndex(['parent_id' => 1]);
-    echo "  Created categories indexes\n";
-    
-    // Carts indexes
-    $cartsCollection = $db->selectCollection('carts');
-    $cartsCollection->createIndex(['user_id' => 1]);
-    $cartsCollection->createIndex(['session_id' => 1]);
-    echo "  Created carts indexes\n";
-    
-    // Reviews indexes
-    $reviewsCollection = $db->selectCollection('reviews');
-    $reviewsCollection->createIndex(['product_id' => 1]);
-    $reviewsCollection->createIndex(['user_id' => 1]);
-    $reviewsCollection->createIndex(['status' => 1]);
-    echo "  Created reviews indexes\n";
-    
-    // Settings indexes
-    $settingsCollection->createIndex(['key' => 1], ['unique' => true]);
-    $settingsCollection->createIndex(['group' => 1]);
-    echo "  Created settings indexes\n";
-    
-    // Roles indexes
-    $rolesCollection->createIndex(['name' => 1], ['unique' => true]);
-    echo "  Created roles indexes\n";
     
     echo "\n===========================================\n";
     echo "Database seeding completed successfully!\n";
