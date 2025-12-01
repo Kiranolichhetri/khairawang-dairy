@@ -7,10 +7,10 @@
     "prefer-stable": true,
     "require": {
         "php": ">=8.2",
-        "ext-pdo": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "mongodb/mongodb": "^1.17"
+        "ext-pdo": "*",
+        "mongodb/mongodb": "^2.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0"
