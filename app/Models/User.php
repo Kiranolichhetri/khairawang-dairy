@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Core\Model;
+use Core\Application;
 use App\Enums\UserRole;
 
 /**
@@ -35,7 +36,7 @@ class User extends Model
     
     protected static array $casts = [
         'id' => 'integer',
-        'role_id' => 'integer',
+        'role_id' => 'string',
         'email_verified_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -204,6 +205,10 @@ class User extends Model
         $avatar = $this->attributes['avatar'] ?? null;
         
         if ($avatar) {
+            // Check if it's a full URL (from Google)
+            if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
+                return $avatar;
+            }
             return '/uploads/avatars/' . $avatar;
         }
         
@@ -228,7 +233,20 @@ class User extends Model
      */
     public static function findByRole(UserRole $role): array
     {
-        // First get role ID
+        $app = Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            // For MongoDB
+            $roleData = static::mongo()->findOne('roles', ['name' => $role->value]);
+            
+            if ($roleData === null) {
+                return [];
+            }
+            
+            return static::findAllBy('role_id', (string) ($roleData['_id'] ?? $roleData['id']));
+        }
+        
+        // For MySQL
         $roleData = self::db()->table('roles')
             ->where('name', $role->value)
             ->first();
@@ -254,7 +272,7 @@ class Role extends Model
     ];
     
     protected static array $casts = [
-        'id' => 'integer',
+        'id' => 'string',
         'permissions' => 'json',
     ];
 }

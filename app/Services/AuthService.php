@@ -5,18 +5,31 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\Role;
 use App\Enums\UserRole;
 use Core\Application;
 use Core\Database;
+use Core\MongoDB;
 
 /**
  * Authentication Service
  * 
  * Handles user authentication, registration, session management, and email verification.
+ * Supports both MySQL and MongoDB backends.
  */
 class AuthService
 {
     private ?Database $db = null;
+    private ?MongoDB $mongo = null;
+
+    /**
+     * Check if MongoDB is the default connection
+     */
+    private function isMongoDb(): bool
+    {
+        $app = Application::getInstance();
+        return $app?->isMongoDbDefault() ?? false;
+    }
 
     /**
      * Get database connection
@@ -35,6 +48,25 @@ class AuthService
         }
         
         return $this->db;
+    }
+
+    /**
+     * Get MongoDB connection
+     */
+    private function mongo(): MongoDB
+    {
+        if ($this->mongo === null) {
+            $app = Application::getInstance();
+            if ($app !== null) {
+                $this->mongo = $app->mongo();
+            }
+        }
+        
+        if ($this->mongo === null) {
+            throw new \RuntimeException('MongoDB connection not available');
+        }
+        
+        return $this->mongo;
     }
 
     /**
@@ -121,10 +153,19 @@ class AuthService
     public function register(array $data): array
     {
         // Get customer role ID
-        $roleData = $this->db()->selectOne(
-            "SELECT id FROM roles WHERE name = ?",
-            [UserRole::CUSTOMER->value]
-        );
+        $roleData = null;
+        
+        if ($this->isMongoDb()) {
+            $roleData = $this->mongo()->findOne('roles', ['name' => UserRole::CUSTOMER->value]);
+            if ($roleData !== null) {
+                $roleData['id'] = $roleData['_id'] ?? $roleData['id'];
+            }
+        } else {
+            $roleData = $this->db()->selectOne(
+                "SELECT id FROM roles WHERE name = ?",
+                [UserRole::CUSTOMER->value]
+            );
+        }
         
         if ($roleData === null) {
             return [
@@ -135,7 +176,7 @@ class AuthService
         
         // Create user
         $user = User::create([
-            'role_id' => $roleData['id'],
+            'role_id' => (string) $roleData['id'],
             'name' => $data['name'],
             'email' => $data['email'],
             'phone' => $data['phone'],
@@ -210,8 +251,10 @@ class AuthService
 
     /**
      * Get the current user ID
+     * 
+     * @return int|string|null
      */
-    public function id(): ?int
+    public function id(): int|string|null
     {
         $app = Application::getInstance();
         $session = $app?->session();
@@ -220,8 +263,7 @@ class AuthService
             return null;
         }
         
-        $userId = $session->get('user_id');
-        return $userId !== null ? (int) $userId : null;
+        return $session->get('user_id');
     }
 
     /**
@@ -231,11 +273,21 @@ class AuthService
      */
     public function verifyEmail(string $token): array
     {
-        // Find verification record
-        $verification = $this->db()->selectOne(
-            "SELECT * FROM email_verifications WHERE token = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-            [$token]
-        );
+        $verification = null;
+        
+        if ($this->isMongoDb()) {
+            // For MongoDB, use $gt for date comparison
+            $cutoffDate = new \DateTime('-24 hours');
+            $verification = $this->mongo()->findOne('email_verifications', [
+                'token' => $token,
+                'created_at' => ['$gt' => $cutoffDate->format('Y-m-d H:i:s')]
+            ]);
+        } else {
+            $verification = $this->db()->selectOne(
+                "SELECT * FROM email_verifications WHERE token = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                [$token]
+            );
+        }
         
         if ($verification === null) {
             return [
@@ -257,7 +309,11 @@ class AuthService
         $user->markEmailAsVerified();
         
         // Delete verification record
-        $this->db()->delete('email_verifications', ['user_id' => $verification['user_id']]);
+        if ($this->isMongoDb()) {
+            $this->mongo()->deleteOne('email_verifications', ['user_id' => $verification['user_id']]);
+        } else {
+            $this->db()->delete('email_verifications', ['user_id' => $verification['user_id']]);
+        }
         
         return [
             'success' => true,
@@ -274,14 +330,25 @@ class AuthService
         $token = bin2hex(random_bytes(32));
         
         // Delete any existing verification tokens for this user
-        $this->db()->delete('email_verifications', ['user_id' => $user->getKey()]);
-        
-        // Insert new verification record
-        $this->db()->insert('email_verifications', [
-            'user_id' => $user->getKey(),
-            'token' => $token,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        if ($this->isMongoDb()) {
+            $this->mongo()->deleteMany('email_verifications', ['user_id' => $user->getKey()]);
+            
+            // Insert new verification record
+            $this->mongo()->insertOne('email_verifications', [
+                'user_id' => $user->getKey(),
+                'token' => $token,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            $this->db()->delete('email_verifications', ['user_id' => $user->getKey()]);
+            
+            // Insert new verification record
+            $this->db()->insert('email_verifications', [
+                'user_id' => $user->getKey(),
+                'token' => $token,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
         
         // In a real application, send email here
         // For now, we just return true

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'default' => 'mysql',
+    'default' => env('DB_CONNECTION', 'mongodb'),
 
     'connections' => [
         'mysql' => [
@@ -19,6 +19,11 @@ return [
             'options' => [
                 \PDO::ATTR_PERSISTENT => false,
             ],
+        ],
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'uri' => env('MONGO_URI', 'mongodb://localhost:27017'),
+            'database' => env('MONGO_DATABASE', 'khairawang_dairy'),
         ],
     ],
 
