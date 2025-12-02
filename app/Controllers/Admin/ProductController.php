@@ -118,6 +118,19 @@ class ProductController
      */
     public function create(Request $request): Response
     {
+        return Response::view('admin.products.create', [
+            'title'      => 'Create Product',
+            'categories' => $this->loadCategories(),
+        ]);
+    }
+
+    /**
+     * Load categories from MongoDB or MySQL
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadCategories(): array
+    {
         $app = Application::getInstance();
         $categories = [];
 
@@ -135,13 +148,25 @@ class ProductController
                 ];
             }
         } else {
-            $categories = Category::all();
+            $categoriesData = Category::all();
+            foreach ($categoriesData as $cat) {
+                if (is_object($cat)) {
+                    $categories[] = [
+                        'id' => (string) $cat->getKey(),
+                        'name_en' => $cat->attributes['name_en'] ?? '',
+                        'slug' => $cat->attributes['slug'] ?? '',
+                    ];
+                } else {
+                    $categories[] = [
+                        'id' => (string) ($cat['id'] ?? ''),
+                        'name_en' => $cat['name_en'] ?? '',
+                        'slug' => $cat['slug'] ?? '',
+                    ];
+                }
+            }
         }
 
-        return Response::view('admin.products.create', [
-            'title'      => 'Create Product',
-            'categories' => $categories,
-        ]);
+        return $categories;
     }
 
     private function formatProductArray(array $product): array
@@ -287,29 +312,10 @@ class ProductController
             $product = $this->formatProductArray($product->toArray());
         }
 
-        $categories = [];
-
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $categoriesData = $mongo->find('categories', [], [
-                'sort' => ['display_order' => 1],
-            ]);
-
-            foreach ($categoriesData as $cat) {
-                $categories[] = [
-                    'id' => (string) ($cat['_id'] ?? ''),
-                    'name_en' => $cat['name_en'] ?? '',
-                    'slug' => $cat['slug'] ?? '',
-                ];
-            }
-        } else {
-            $categories = Category::all();
-        }
-
         return Response::view('admin.products.edit', [
             'title'      => 'Edit Product',
             'product'    => $product,
-            'categories' => $categories,
+            'categories' => $this->loadCategories(),
         ]);
     }
 

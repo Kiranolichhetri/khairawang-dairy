@@ -53,25 +53,15 @@ $view->extends('admin');
                     <?php endif; ?>
                 </div>
                 
-                <!-- Updated Category Dropdown -->
+                <!-- Category Dropdown -->
                 <div>
                     <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                     <select id="category_id" name="category_id" required 
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-orange">
                         <option value="">Select Category</option>
                         <?php foreach ($categories as $category): ?>
-                            <?php 
-                                // Handle both Model objects and arrays
-                                if (is_object($category)) {
-                                    $catId = $category->getKey();
-                                    $catName = $category->attributes['name_en'] ?? '';
-                                } else {
-                                    $catId = (string) ($category['_id'] ?? $category['id'] ?? '');
-                                    $catName = $category['name_en'] ?? '';
-                                }
-                            ?>
-                            <option value="<?= $view->e($catId) ?>" <?= $view->old('category_id') == $catId ? 'selected' : '' ?>>
-                                <?= $view->e($catName) ?>
+                            <option value="<?= $view->e($category['id']) ?>" <?= $view->old('category_id') == $category['id'] ? 'selected' : '' ?>>
+                                <?= $view->e($category['name_en']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
