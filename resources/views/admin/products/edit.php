@@ -61,8 +61,8 @@ $view->extends('admin');
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-orange">
                         <option value="">Select Category</option>
                         <?php foreach ($categories as $category): ?>
-                            <option value="<?= $category->getKey() ?>" <?= ($view->old('category_id', $product['category_id'] ?? '')) == $category->getKey() ? 'selected' : '' ?>>
-                                <?= $view->e($category->attributes['name_en'] ?? '') ?>
+                            <option value="<?= $view->e($category['id']) ?>" <?= ($view->old('category_id', $product['category_id'] ?? '')) == $category['id'] ? 'selected' : '' ?>>
+                                <?= $view->e($category['name_en']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
