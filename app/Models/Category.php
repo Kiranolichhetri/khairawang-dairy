@@ -128,6 +128,15 @@ class Category extends Model
      */
     public function getProductCount(): int
     {
+        $app = \Core\Application::getInstance();
+        if ($app?->isMongoDbDefault()) {
+            return $app->mongo()->count('products', [
+                'category_id' => (string) $this->getKey(),
+                'status' => 'published',
+                'deleted_at' => null
+            ]);
+        }
+        
         return self::db()->table('products')
             ->where('category_id', $this->getKey())
             ->where('status', 'published')

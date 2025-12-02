@@ -143,6 +143,7 @@ class Product extends Model
         
         if (!empty($images) && is_array($images)) {
             $image = $images[0];
+            // Check if already a full URL path
             if (str_starts_with($image, '/uploads/') || str_starts_with($image, 'http')) {
                 return $image;
             }
@@ -160,7 +161,13 @@ class Product extends Model
             return ['/assets/images/product-placeholder.png'];
         }
         
-        return array_map(fn($img) => str_starts_with($img, '/uploads/') || str_starts_with($img, 'http') ? $img : '/uploads/products/' . $img, $images);
+        return array_map(function($img) {
+            // Check if already a full URL path
+            if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
+                return $img;
+            }
+            return '/uploads/products/' . $img;
+        }, $images);
     }
 
     public function category(): ?array
@@ -170,6 +177,13 @@ class Product extends Model
 
     public function variants(): array
     {
+        $app = \Core\Application::getInstance();
+        if ($app?->isMongoDbDefault()) {
+            return $app->mongo()->find('product_variants', [
+                'product_id' => (string) $this->getKey()
+            ]);
+        }
+        
         return self::db()->table('product_variants')
             ->where('product_id', $this->getKey())
             ->get();
@@ -255,10 +269,27 @@ class Product extends Model
 
     public static function lowStock(): array
     {
-        $rows = self::db()->table(static::$table)
-            ->whereRaw('stock <= low_stock_threshold AND stock > 0')
-            ->whereNull('deleted_at')
-            ->get();
+        $app = \Core\Application::getInstance();
+        if ($app?->isMongoDbDefault()) {
+            // Use MongoDB aggregation to compare fields
+            $pipeline = [
+                [
+                    '$match' => [
+                        'stock' => ['$gt' => 0],
+                        'deleted_at' => null,
+                        '$expr' => [
+                            '$lte' => ['$stock', '$low_stock_threshold']
+                        ]
+                    ]
+                ]
+            ];
+            $rows = $app->mongo()->aggregate(static::$table, $pipeline);
+        } else {
+            $rows = self::db()->table(static::$table)
+                ->whereRaw('stock <= low_stock_threshold AND stock > 0')
+                ->whereNull('deleted_at')
+                ->get();
+        }
         
         return array_map(fn($row) => static::hydrate($row), $rows);
     }
