@@ -205,8 +205,8 @@ class CategoryController
         }
 
         // Handle parent_id for MongoDB (string) vs MySQL (int)
-        if ($parentId !== null) {
-            $parentId = $app->isMongoDbDefault() ? $parentId : (int) $parentId;
+        if ($parentId !== null && !$app?->isMongoDbDefault()) {
+            $parentId = (int) $parentId;
         }
 
         // Update category
