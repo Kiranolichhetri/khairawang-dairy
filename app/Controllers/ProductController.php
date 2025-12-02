@@ -79,10 +79,17 @@ class ProductController
         $firstImage = '/assets/images/placeholder.png';
         if (!empty($images) && is_array($images)) {
             $img = $images[0];
-            if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
-                $firstImage = $img;
-            } else {
-                $firstImage = '/uploads/products/' . $img;
+            // Validate image path to prevent path traversal attacks
+            if (is_string($img) && !str_contains($img, '..') && !str_contains($img, "\0")) {
+                if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
+                    $firstImage = $img;
+                } else {
+                    // Only allow alphanumeric, dash, underscore, dot and forward slash
+                    $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.\/]/', '', basename($img));
+                    if (!empty($sanitizedImg)) {
+                        $firstImage = '/uploads/products/' . $sanitizedImg;
+                    }
+                }
             }
         }
         

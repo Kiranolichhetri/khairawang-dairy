@@ -13,10 +13,20 @@ $view->endSection();
 // Get products and categories passed from controller
 $serverProducts = $products ?? [];
 $serverCategories = $categories ?? [];
+
+// Safely encode data for Alpine.js - handle encoding failures gracefully
+$initialDataJson = json_encode(
+    ['products' => $serverProducts, 'categories' => $serverCategories],
+    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
+);
+// Fallback to empty data if encoding fails
+if ($initialDataJson === false) {
+    $initialDataJson = '{"products":[],"categories":[]}';
+}
 ?>
 
 <?php $view->section('content'); ?>
-<div class="min-h-screen bg-cream py-8" x-data="productListing(<?php echo htmlspecialchars(json_encode(['products' => $serverProducts, 'categories' => $serverCategories]), ENT_QUOTES, 'UTF-8'); ?>)">
+<div class="min-h-screen bg-cream py-8" x-data="productListing(<?php echo htmlspecialchars($initialDataJson, ENT_QUOTES, 'UTF-8'); ?>)">
     <div class="container-dairy">
         <!-- Page Header -->
         <div class="mb-8">

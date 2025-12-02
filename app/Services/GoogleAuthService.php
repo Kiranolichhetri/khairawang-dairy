@@ -28,7 +28,8 @@ class GoogleAuthService
     /**
      * Get the redirect URI for Google OAuth
      * 
-     * Uses GOOGLE_REDIRECT_URI if set, otherwise constructs from APP_URL
+     * Uses GOOGLE_REDIRECT_URI if set, otherwise constructs from APP_URL.
+     * Note: For production, ensure APP_URL or GOOGLE_REDIRECT_URI uses HTTPS.
      */
     private function getRedirectUri(?Application $app): string
     {
@@ -38,7 +39,7 @@ class GoogleAuthService
             return $explicitUri;
         }
         
-        // Fallback: construct from APP_URL
+        // Fallback: construct from APP_URL (HTTP is only acceptable for localhost development)
         $baseUrl = $app?->config('app.url', '') ?? $_ENV['APP_URL'] ?? 'http://localhost:8000';
         $baseUrl = rtrim($baseUrl, '/');
         return $baseUrl . '/auth/google/callback';
