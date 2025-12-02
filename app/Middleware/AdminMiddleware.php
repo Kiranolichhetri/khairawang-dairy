@@ -15,7 +15,7 @@ use App\Enums\UserRole;
 /**
  * Admin Middleware
  * 
- * Ensures the user has admin/staff privileges before accessing protected routes.
+ * Ensures the user has admin/staff privileges before accessing protected routes. 
  */
 class AdminMiddleware implements Middleware
 {
@@ -24,9 +24,9 @@ class AdminMiddleware implements Middleware
      */
     private UserRole $requiredRole;
 
-    public function __construct(UserRole $requiredRole = UserRole::STAFF)
+    public function __construct()
     {
-        $this->requiredRole = $requiredRole;
+        $this->requiredRole = UserRole::STAFF;
     }
 
     /**
@@ -43,7 +43,7 @@ class AdminMiddleware implements Middleware
         $session = $app->session();
         
         // Check if user is authenticated
-        if (!$session->has('user_id')) {
+        if (! $session->has('user_id')) {
             if ($request->expectsJson()) {
                 return Response::error('Unauthorized', 401);
             }
@@ -94,11 +94,22 @@ class AdminMiddleware implements Middleware
     }
 
     /**
+     * Set required role
+     */
+    public function setRequiredRole(UserRole $role): self
+    {
+        $this->requiredRole = $role;
+        return $this;
+    }
+
+    /**
      * Create middleware instance requiring admin role
      */
     public static function admin(): self
     {
-        return new self(UserRole::ADMIN);
+        $instance = new self();
+        $instance->requiredRole = UserRole::ADMIN;
+        return $instance;
     }
 
     /**
@@ -106,7 +117,9 @@ class AdminMiddleware implements Middleware
      */
     public static function manager(): self
     {
-        return new self(UserRole::MANAGER);
+        $instance = new self();
+        $instance->requiredRole = UserRole::MANAGER;
+        return $instance;
     }
 
     /**
@@ -114,6 +127,8 @@ class AdminMiddleware implements Middleware
      */
     public static function staff(): self
     {
-        return new self(UserRole::STAFF);
+        $instance = new self();
+        $instance->requiredRole = UserRole::STAFF;
+        return $instance;
     }
 }
