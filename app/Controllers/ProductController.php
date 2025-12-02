@@ -21,14 +21,114 @@ class ProductController
      * List all products with pagination, filters, search
      * 
      * Renders the products listing HTML view.
-     * The view uses Alpine.js which fetches data from /api/v1/products.
+     * Products are loaded from MongoDB directly (similar to HomeController).
      */
     public function index(Request $request): Response
     {
+        $app = \Core\Application::getInstance();
+        $products = [];
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            
+            // Get products from MongoDB
+            $productsData = $mongo->find('products', [
+                'status' => 'published',
+                'deleted_at' => null,
+            ], [
+                'sort' => ['created_at' => -1],
+            ]);
+            
+            foreach ($productsData as $product) {
+                $products[] = $this->formatProductFromMongoRow($product);
+            }
+        }
+        
+        // Get categories for filter
+        $categories = [];
+        if ($app?->isMongoDbDefault()) {
+            $categoriesData = $app->mongo()->find('categories', [], [
+                'sort' => ['display_order' => 1],
+            ]);
+            foreach ($categoriesData as $cat) {
+                $categories[] = [
+                    'id' => (string) ($cat['_id'] ?? ''),
+                    'name' => $cat['name_en'] ?? '',
+                    'slug' => $cat['slug'] ?? '',
+                ];
+            }
+        }
+        
         return Response::view('products.index', [
             'title' => 'Our Products',
             'pageDescription' => 'Browse our collection of fresh dairy products from KHAIRAWANG DAIRY.',
+            'products' => $products,
+            'categories' => $categories,
         ]);
+    }
+
+    /**
+     * Format product from MongoDB document
+     * 
+     * @param array<string, mixed> $product
+     * @return array<string, mixed>
+     */
+    private function formatProductFromMongoRow(array $product): array
+    {
+        $images = $product['images'] ?? [];
+        $firstImage = '/assets/images/placeholder.png';
+        if (!empty($images) && is_array($images)) {
+            $img = $images[0];
+            // Validate image path to prevent path traversal and other attacks
+            if (is_string($img) && !str_contains($img, '..') && !str_contains($img, "\0")) {
+                if (str_starts_with($img, '/uploads/')) {
+                    // Trusted internal path - allow as-is
+                    $firstImage = $img;
+                } elseif (str_starts_with($img, 'https://')) {
+                    // Only allow HTTPS for external images
+                    $firstImage = $img;
+                } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
+                    // Simple filename (no path separators) - sanitize and use
+                    $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
+                    if (!empty($sanitizedImg)) {
+                        $firstImage = '/uploads/products/' . $sanitizedImg;
+                    }
+                }
+            }
+        }
+        
+        $price = (float) ($product['price'] ?? 0);
+        $salePrice = isset($product['sale_price']) && $product['sale_price'] > 0 ? (float) $product['sale_price'] : null;
+        $currentPrice = $salePrice ?? $price;
+        $isOnSale = $salePrice !== null && $salePrice < $price;
+        $discountPercentage = $isOnSale && $price > 0 ? (int) round((($price - $salePrice) / $price) * 100) : 0;
+        $stock = (int) ($product['stock'] ?? 0);
+        
+        // Stock status
+        $stockStatus = 'In Stock';
+        if ($stock <= 0) {
+            $stockStatus = 'Out of Stock';
+        } elseif ($stock <= 10) {
+            $stockStatus = 'Low Stock';
+        }
+        
+        return [
+            'id' => (string) ($product['_id'] ?? $product['id'] ?? ''),
+            'name' => $product['name_en'] ?? '',
+            'name_ne' => $product['name_ne'] ?? '',
+            'slug' => $product['slug'] ?? '',
+            'short_description' => $product['short_description'] ?? '',
+            'price' => $price,
+            'sale_price' => $salePrice,
+            'current_price' => $currentPrice,
+            'is_on_sale' => $isOnSale,
+            'discount_percentage' => $discountPercentage,
+            'stock' => $stock,
+            'in_stock' => $stock > 0,
+            'stock_status' => $stockStatus,
+            'featured' => (bool) ($product['featured'] ?? false),
+            'image' => $firstImage,
+        ];
     }
 
     /**
