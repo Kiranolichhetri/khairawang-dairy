@@ -46,6 +46,14 @@ $view->endSection();
     border-radius: 1rem;
     overflow: hidden;
     box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+    .main-image-container {
+        max-width: 100%;
+    }
 }
 
 .main-image {
@@ -513,8 +521,8 @@ $view->endSection();
         </nav>
 
         <!-- Loading State -->
-        <div x-show="loading" class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <div>
+        <div x-show="loading" class="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12">
+            <div class="lg:col-span-2">
                 <div class="main-image-container skeleton"></div>
                 <div class="flex gap-3 mt-4">
                     <div class="w-20 h-20 rounded-lg skeleton"></div>
@@ -522,7 +530,7 @@ $view->endSection();
                     <div class="w-20 h-20 rounded-lg skeleton"></div>
                 </div>
             </div>
-            <div class="space-y-6">
+            <div class="lg:col-span-3 space-y-6">
                 <div class="h-10 skeleton rounded-lg w-3/4"></div>
                 <div class="h-6 skeleton rounded-lg w-1/2"></div>
                 <div class="h-24 skeleton rounded-lg"></div>
@@ -532,9 +540,9 @@ $view->endSection();
         </div>
 
         <!-- Product Detail -->
-        <div x-show="!loading" x-cloak class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <!-- Product Images -->
-            <div class="space-y-4">
+        <div x-show="!loading" x-cloak class="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12">
+            <!-- Product Images - takes 2 columns -->
+            <div class="lg:col-span-2 space-y-4">
                 <!-- Main Image -->
                 <div class="main-image-container">
                     <img :src="selectedImage" :alt="product.name" 
@@ -566,8 +574,8 @@ $view->endSection();
                 </div>
             </div>
 
-            <!-- Product Info -->
-            <div class="space-y-6">
+            <!-- Product Info - takes 3 columns -->
+            <div class="lg:col-span-3 space-y-6">
                 <!-- Title & Description -->
                 <div>
                     <h1 class="product-title" x-text="product.name"></h1>

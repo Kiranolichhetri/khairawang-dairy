@@ -262,6 +262,74 @@ class ProductController
      */
     public function apiShow(Request $request, string $slug): Response
     {
+        $app = \Core\Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            
+            // Find product by slug in MongoDB
+            $productData = $mongo->findOne('products', [
+                'slug' => $slug,
+                'status' => 'published',
+            ]);
+            
+            if (!$productData) {
+                return Response::error('Product not found', 404);
+            }
+            
+            $product = $this->formatProductFromMongoRow((array) $productData);
+            
+            // Add full description
+            $product['description'] = $productData['description_en'] ?? '';
+            $product['sku'] = $productData['sku'] ?? '';
+            $product['weight'] = $productData['weight'] ?? null;
+            $product['images'] = $this->formatImages($productData['images'] ?? []);
+            
+            // Get category
+            $category = null;
+            if (!empty($productData['category_id'])) {
+                $catData = $mongo->findOne('categories', [
+                    '_id' => is_string($productData['category_id']) && strlen($productData['category_id']) === 24
+                        ? new \MongoDB\BSON\ObjectId($productData['category_id'])
+                        : $productData['category_id']
+                ]);
+                if ($catData) {
+                    $category = [
+                        'id' => (string) ($catData['_id'] ?? ''),
+                        'name' => $catData['name_en'] ?? '',
+                        'slug' => $catData['slug'] ?? '',
+                    ];
+                }
+            }
+            
+            // Get related products
+            $relatedProducts = [];
+            if (!empty($productData['category_id'])) {
+                $relatedData = $mongo->find('products', [
+                    'category_id' => $productData['category_id'],
+                    '_id' => ['$ne' => $productData['_id']],
+                    'status' => 'published',
+                ], [
+                    'limit' => 4,
+                ]);
+                
+                foreach ($relatedData as $related) {
+                    $relatedProducts[] = $this->formatProductFromMongoRow((array) $related);
+                }
+            }
+            
+            return Response::json([
+                'success' => true,
+                'data' => [
+                    'product' => $product,
+                    'category' => $category,
+                    'variants' => [],
+                    'related_products' => $relatedProducts,
+                ],
+            ]);
+        }
+        
+        // MySQL fallback - existing code
         $product = Product::findBySlug($slug);
         
         if ($product === null || !$product->isPublished()) {
@@ -299,6 +367,29 @@ class ProductController
                 'related_products' => $relatedProducts,
             ],
         ]);
+    }
+    
+    /**
+     * Format images array for API response
+     * 
+     * @param array<mixed> $images
+     * @return array<string>
+     */
+    private function formatImages(array $images): array
+    {
+        if (empty($images)) {
+            return ['/assets/images/product-placeholder.png'];
+        }
+        
+        return array_map(function($img) {
+            if (!is_string($img)) {
+                return '/assets/images/product-placeholder.png';
+            }
+            if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
+                return $img;
+            }
+            return '/uploads/products/' . $img;
+        }, $images);
     }
 
     /**
