@@ -638,11 +638,11 @@ $view->endSection();
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
                                 </svg>
                             </button>
-                            <input type="number" x-model.number="quantity" min="1" :max="product.stock"
+                            <input type="number" x-model.number="quantity" min="1" :max="product.stock || 1"
                                    class="quantity-input">
-                            <button @click="quantity = Math.min(product.stock || 99, quantity + 1)"
+                            <button @click="quantity = Math.min(product.stock || 1, quantity + 1)"
                                     class="quantity-btn"
-                                    :disabled="quantity >= product.stock">
+                                    :disabled="!product.stock || quantity >= product.stock">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                 </svg>
