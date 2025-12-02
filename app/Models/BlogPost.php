@@ -51,6 +51,19 @@ class BlogPost extends Model
     public const STATUS_ARCHIVED = 'archived';
 
     /**
+     * Pivot table for post tags
+     */
+    protected const PIVOT_TABLE_TAGS = 'blog_post_tags';
+
+    /**
+     * Get current datetime formatted for queries
+     */
+    private static function getCurrentDateTime(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
      * Check if post is published
      */
     public function isPublished(): bool
@@ -247,7 +260,7 @@ class BlogPost extends Model
     public static function published(int $limit = 10, int $offset = 0): array
     {
         if (static::isMongoDb()) {
-            $now = date('Y-m-d H:i:s');
+            $now = self::getCurrentDateTime();
             $rows = static::query()
                 ->where('status', self::STATUS_PUBLISHED)
                 ->where('published_at', '<=', $now)
@@ -274,7 +287,7 @@ class BlogPost extends Model
     public static function publishedCount(): int
     {
         if (static::isMongoDb()) {
-            $now = date('Y-m-d H:i:s');
+            $now = self::getCurrentDateTime();
             return static::query()
                 ->where('status', self::STATUS_PUBLISHED)
                 ->where('published_at', '<=', $now)
@@ -295,7 +308,7 @@ class BlogPost extends Model
     public static function byCategory(int $categoryId, int $limit = 10, int $offset = 0): array
     {
         if (static::isMongoDb()) {
-            $now = date('Y-m-d H:i:s');
+            $now = self::getCurrentDateTime();
             $rows = static::query()
                 ->where('category_id', $categoryId)
                 ->where('status', self::STATUS_PUBLISHED)
@@ -327,10 +340,10 @@ class BlogPost extends Model
     {
         if (static::isMongoDb()) {
             $mongo = static::mongo();
-            $now = date('Y-m-d H:i:s');
+            $now = self::getCurrentDateTime();
             
             // Get post IDs from pivot collection
-            $pivotDocs = $mongo->find('blog_post_tags', ['tag_id' => $tagId]);
+            $pivotDocs = $mongo->find(self::PIVOT_TABLE_TAGS, ['tag_id' => $tagId]);
             $postIds = array_column($pivotDocs, 'post_id');
             
             if (empty($postIds)) {
@@ -369,11 +382,11 @@ class BlogPost extends Model
     public static function search(string $query, int $limit = 10): array
     {
         if (static::isMongoDb()) {
-            $now = date('Y-m-d H:i:s');
+            $now = self::getCurrentDateTime();
             $escapedQuery = preg_quote($query, '/');
             
             $mongo = static::mongo();
-            $rows = $mongo->find('blog_posts', [
+            $rows = $mongo->find(static::getTable(), [
                 'status' => self::STATUS_PUBLISHED,
                 'published_at' => ['$lte' => $now],
                 '$or' => [
