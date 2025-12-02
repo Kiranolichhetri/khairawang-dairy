@@ -246,13 +246,24 @@ class BlogPost extends Model
      */
     public static function published(int $limit = 10, int $offset = 0): array
     {
-        $rows = static::query()
-            ->where('status', self::STATUS_PUBLISHED)
-            ->whereRaw('published_at <= NOW()')
-            ->orderBy('published_at', 'DESC')
-            ->limit($limit)
-            ->offset($offset)
-            ->get();
+        if (static::isMongoDb()) {
+            $now = date('Y-m-d H:i:s');
+            $rows = static::query()
+                ->where('status', self::STATUS_PUBLISHED)
+                ->where('published_at', '<=', $now)
+                ->orderBy('published_at', 'DESC')
+                ->limit($limit)
+                ->offset($offset)
+                ->get();
+        } else {
+            $rows = static::query()
+                ->where('status', self::STATUS_PUBLISHED)
+                ->whereRaw('published_at <= NOW()')
+                ->orderBy('published_at', 'DESC')
+                ->limit($limit)
+                ->offset($offset)
+                ->get();
+        }
         
         return array_map(fn($row) => static::hydrate($row), $rows);
     }
@@ -262,6 +273,14 @@ class BlogPost extends Model
      */
     public static function publishedCount(): int
     {
+        if (static::isMongoDb()) {
+            $now = date('Y-m-d H:i:s');
+            return static::query()
+                ->where('status', self::STATUS_PUBLISHED)
+                ->where('published_at', '<=', $now)
+                ->count();
+        }
+        
         return static::query()
             ->where('status', self::STATUS_PUBLISHED)
             ->whereRaw('published_at <= NOW()')
@@ -275,14 +294,26 @@ class BlogPost extends Model
      */
     public static function byCategory(int $categoryId, int $limit = 10, int $offset = 0): array
     {
-        $rows = static::query()
-            ->where('category_id', $categoryId)
-            ->where('status', self::STATUS_PUBLISHED)
-            ->whereRaw('published_at <= NOW()')
-            ->orderBy('published_at', 'DESC')
-            ->limit($limit)
-            ->offset($offset)
-            ->get();
+        if (static::isMongoDb()) {
+            $now = date('Y-m-d H:i:s');
+            $rows = static::query()
+                ->where('category_id', $categoryId)
+                ->where('status', self::STATUS_PUBLISHED)
+                ->where('published_at', '<=', $now)
+                ->orderBy('published_at', 'DESC')
+                ->limit($limit)
+                ->offset($offset)
+                ->get();
+        } else {
+            $rows = static::query()
+                ->where('category_id', $categoryId)
+                ->where('status', self::STATUS_PUBLISHED)
+                ->whereRaw('published_at <= NOW()')
+                ->orderBy('published_at', 'DESC')
+                ->limit($limit)
+                ->offset($offset)
+                ->get();
+        }
         
         return array_map(fn($row) => static::hydrate($row), $rows);
     }
@@ -294,6 +325,30 @@ class BlogPost extends Model
      */
     public static function byTag(int $tagId, int $limit = 10, int $offset = 0): array
     {
+        if (static::isMongoDb()) {
+            $mongo = static::mongo();
+            $now = date('Y-m-d H:i:s');
+            
+            // Get post IDs from pivot collection
+            $pivotDocs = $mongo->find('blog_post_tags', ['tag_id' => $tagId]);
+            $postIds = array_column($pivotDocs, 'post_id');
+            
+            if (empty($postIds)) {
+                return [];
+            }
+            
+            $rows = static::query()
+                ->whereIn('_id', $postIds)
+                ->where('status', self::STATUS_PUBLISHED)
+                ->where('published_at', '<=', $now)
+                ->orderBy('published_at', 'DESC')
+                ->limit($limit)
+                ->offset($offset)
+                ->get();
+            
+            return array_map(fn($row) => static::hydrate($row), $rows);
+        }
+        
         $rows = self::db()->select(
             "SELECT p.* FROM blog_posts p 
              INNER JOIN blog_post_tags pt ON p.id = pt.post_id 
@@ -313,6 +368,27 @@ class BlogPost extends Model
      */
     public static function search(string $query, int $limit = 10): array
     {
+        if (static::isMongoDb()) {
+            $now = date('Y-m-d H:i:s');
+            $escapedQuery = preg_quote($query, '/');
+            
+            $mongo = static::mongo();
+            $rows = $mongo->find('blog_posts', [
+                'status' => self::STATUS_PUBLISHED,
+                'published_at' => ['$lte' => $now],
+                '$or' => [
+                    ['title_en' => ['$regex' => $escapedQuery, '$options' => 'i']],
+                    ['title_ne' => ['$regex' => $escapedQuery, '$options' => 'i']],
+                    ['content_en' => ['$regex' => $escapedQuery, '$options' => 'i']],
+                ],
+            ], [
+                'sort' => ['published_at' => -1],
+                'limit' => $limit,
+            ]);
+            
+            return array_map(fn($row) => static::hydrate($row), $rows);
+        }
+        
         // Escape special characters for LIKE queries
         $escapedQuery = addcslashes($query, '%_');
         $searchTerm = '%' . $escapedQuery . '%';
