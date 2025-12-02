@@ -113,6 +113,19 @@ class ProductController
         ]);
     }
 
+    /**
+     * Show create product form
+     */
+    public function create(Request $request): Response
+    {
+        $categories = Category::all();
+
+        return Response::view('admin.products.create', [
+            'title'      => 'Create Product',
+            'categories' => $categories,
+        ]);
+    }
+
     private function formatProductArray(array $product): array
     {
         $images = $product['images'] ?? [];
