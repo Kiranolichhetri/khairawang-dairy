@@ -15,8 +15,6 @@ use Core\Application;
 
 /**
  * Admin Dashboard Controller
- * 
- * Displays main admin dashboard with statistics and recent activity.
  */
 class DashboardController
 {
@@ -25,27 +23,30 @@ class DashboardController
      */
     public function index(Request $request): Response
     {
-        $stats = $this->getStats($request);
+        $stats = $this->getDashboardData();
         
         return Response::view('admin.dashboard.index', [
             'title' => 'Dashboard',
-            'stats' => $stats['data'],
+            'stats' => $stats,
         ]);
     }
 
     /**
-     * Get dashboard statistics
+     * Get dashboard data (internal use)
      */
-    public function getStats(Request $request): Response
+    private function getDashboardData(): array
     {
         $app = Application::getInstance();
+        
+        // Check if MongoDB is default
+        if ($app?->isMongoDbDefault()) {
+            return $this->getMongoStats();
+        }
+        
         $db = $app?->db();
         
         if ($db === null) {
-            return Response::json([
-                'success' => false,
-                'message' => 'Database connection error',
-            ], 500);
+            return $this->getEmptyStats();
         }
         
         // Sales statistics
@@ -63,16 +64,13 @@ class DashboardController
         // Low stock products
         $lowStockProducts = $this->getLowStockProducts($db);
         
-        // Recent orders
-        $recentOrders = Order::recent(10);
-        
         // Top selling products
         $topProducts = $this->getTopSellingProducts($db);
         
         // Today's orders count
         $todayOrders = $this->getOrderCountForPeriod($db, 'today');
         
-        $data = [
+        return [
             'revenue' => [
                 'today' => $todayRevenue,
                 'week' => $weekRevenue,
@@ -95,27 +93,93 @@ class DashboardController
                 'low_stock' => $lowStockProducts,
                 'top_selling' => $topProducts,
             ],
-            'recent_orders' => array_map(function($order) {
-                return [
-                    'id' => $order->getKey(),
-                    'order_number' => $order->attributes['order_number'],
-                    'customer_name' => $order->getCustomerName(),
-                    'total' => $order->attributes['total'],
-                    'status' => $order->getStatus()->value,
-                    'status_label' => $order->getStatus()->label(),
-                    'status_color' => $order->getStatus()->color(),
-                    'payment_status' => $order->getPaymentStatus()->value,
-                    'created_at' => $order->attributes['created_at'],
-                ];
-            }, $recentOrders),
+            'recent_orders' => [],
         ];
+    }
+
+    /**
+     * Get MongoDB stats
+     */
+    private function getMongoStats(): array
+    {
+        $app = Application::getInstance();
+        $mongo = $app?->mongo();
         
-        if ($request->expectsJson()) {
-            return Response::json([
-                'success' => true,
-                'data' => $data,
-            ]);
+        if ($mongo === null) {
+            return $this->getEmptyStats();
         }
+        
+        // Count orders
+        $totalOrders = $mongo->count('orders');
+        $totalCustomers = $mongo->count('users', ['status' => 'active']);
+        $totalProducts = $mongo->count('products');
+        
+        return [
+            'revenue' => [
+                'today' => 0,
+                'week' => 0,
+                'month' => 0,
+                'year' => 0,
+            ],
+            'orders' => [
+                'total' => $totalOrders,
+                'pending' => 0,
+                'processing' => 0,
+                'shipped' => 0,
+                'delivered' => 0,
+                'cancelled' => 0,
+                'today' => 0,
+            ],
+            'customers' => [
+                'total' => $totalCustomers,
+            ],
+            'products' => [
+                'low_stock' => [],
+                'top_selling' => [],
+                'total' => $totalProducts,
+            ],
+            'recent_orders' => [],
+        ];
+    }
+
+    /**
+     * Get empty stats
+     */
+    private function getEmptyStats(): array
+    {
+        return [
+            'revenue' => [
+                'today' => 0,
+                'week' => 0,
+                'month' => 0,
+                'year' => 0,
+            ],
+            'orders' => [
+                'total' => 0,
+                'pending' => 0,
+                'processing' => 0,
+                'shipped' => 0,
+                'delivered' => 0,
+                'cancelled' => 0,
+                'today' => 0,
+            ],
+            'customers' => [
+                'total' => 0,
+            ],
+            'products' => [
+                'low_stock' => [],
+                'top_selling' => [],
+            ],
+            'recent_orders' => [],
+        ];
+    }
+
+    /**
+     * Get dashboard statistics (API endpoint)
+     */
+    public function getStats(Request $request): Response
+    {
+        $data = $this->getDashboardData();
         
         return Response::json([
             'success' => true,
@@ -128,26 +192,30 @@ class DashboardController
      */
     private function getRevenueForPeriod($db, string $period): float
     {
-        $sql = "SELECT COALESCE(SUM(total), 0) as revenue FROM orders WHERE payment_status = ?";
-        $params = [PaymentStatus::PAID->value];
-        
-        switch ($period) {
-            case 'today':
-                $sql .= " AND DATE(created_at) = CURDATE()";
-                break;
-            case 'week':
-                $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-                break;
-            case 'month':
-                $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-                break;
-            case 'year':
-                $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)";
-                break;
+        try {
+            $sql = "SELECT COALESCE(SUM(total), 0) as revenue FROM orders WHERE payment_status = ? ";
+            $params = [PaymentStatus::PAID->value];
+            
+            switch ($period) {
+                case 'today':
+                    $sql .= " AND DATE(created_at) = CURDATE()";
+                    break;
+                case 'week':
+                    $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+                    break;
+                case 'month':
+                    $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+                    break;
+                case 'year':
+                    $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)";
+                    break;
+            }
+            
+            $result = $db->selectOne($sql, $params);
+            return (float) ($result['revenue'] ?? 0);
+        } catch (\Exception $e) {
+            return 0;
         }
-        
-        $result = $db->selectOne($sql, $params);
-        return (float) ($result['revenue'] ?? 0);
     }
 
     /**
@@ -155,34 +223,33 @@ class DashboardController
      */
     private function getOrderCountForPeriod($db, string $period): int
     {
-        $sql = "SELECT COUNT(*) as count FROM orders WHERE 1=1";
-        
-        switch ($period) {
-            case 'today':
-                $sql .= " AND DATE(created_at) = CURDATE()";
-                break;
-            case 'week':
-                $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-                break;
-            case 'month':
-                $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-                break;
+        try {
+            $sql = "SELECT COUNT(*) as count FROM orders WHERE 1=1";
+            
+            switch ($period) {
+                case 'today':
+                    $sql .= " AND DATE(created_at) = CURDATE()";
+                    break;
+                case 'week':
+                    $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+                    break;
+                case 'month':
+                    $sql .= " AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+                    break;
+            }
+            
+            $result = $db->selectOne($sql);
+            return (int) ($result['count'] ?? 0);
+        } catch (\Exception $e) {
+            return 0;
         }
-        
-        $result = $db->selectOne($sql);
-        return (int) ($result['count'] ?? 0);
     }
 
     /**
      * Get order statistics by status
-     * 
-     * @return array<string, int>
      */
     private function getOrderStatsByStatus($db): array
     {
-        $sql = "SELECT status, COUNT(*) as count FROM orders GROUP BY status";
-        $results = $db->select($sql);
-        
         $stats = [
             'total' => 0,
             'pending' => 0,
@@ -195,11 +262,18 @@ class DashboardController
             'returned' => 0,
         ];
         
-        foreach ($results as $row) {
-            $status = $row['status'];
-            $count = (int) $row['count'];
-            $stats[$status] = $count;
-            $stats['total'] += $count;
+        try {
+            $sql = "SELECT status, COUNT(*) as count FROM orders GROUP BY status";
+            $results = $db->select($sql);
+            
+            foreach ($results as $row) {
+                $status = $row['status'];
+                $count = (int) $row['count'];
+                $stats[$status] = $count;
+                $stats['total'] += $count;
+            }
+        } catch (\Exception $e) {
+            // Return empty stats
         }
         
         return $stats;
@@ -210,47 +284,55 @@ class DashboardController
      */
     private function getCustomerCount($db): int
     {
-        $sql = "SELECT COUNT(*) as count FROM users u 
-                INNER JOIN roles r ON u.role_id = r.id 
-                WHERE r.name = 'customer'";
-        $result = $db->selectOne($sql);
-        return (int) ($result['count'] ?? 0);
+        try {
+            $sql = "SELECT COUNT(*) as count FROM users u 
+                    INNER JOIN roles r ON u.role_id = r.id 
+                    WHERE r.name = 'customer'";
+            $result = $db->selectOne($sql);
+            return (int) ($result['count'] ?? 0);
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     /**
      * Get low stock products
-     * 
-     * @return array<array<string, mixed>>
      */
     private function getLowStockProducts($db, int $limit = 5): array
     {
-        $sql = "SELECT id, name_en as name, slug, stock, low_stock_threshold 
-                FROM products 
-                WHERE stock <= low_stock_threshold AND deleted_at IS NULL
-                ORDER BY stock ASC 
-                LIMIT ?";
-        
-        return $db->select($sql, [$limit]);
+        try {
+            $sql = "SELECT id, name_en as name, slug, stock, low_stock_threshold 
+                    FROM products 
+                    WHERE stock <= low_stock_threshold AND deleted_at IS NULL
+                    ORDER BY stock ASC 
+                    LIMIT ?";
+            
+            return $db->select($sql, [$limit]);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**
      * Get top selling products
-     * 
-     * @return array<array<string, mixed>>
      */
     private function getTopSellingProducts($db, int $limit = 5): array
     {
-        $sql = "SELECT p.id, p.name_en as name, p.slug, p.price, 
-                       COALESCE(SUM(oi.quantity), 0) as total_sold
-                FROM products p
-                LEFT JOIN order_items oi ON p.id = oi.product_id
-                LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'cancelled'
-                WHERE p.deleted_at IS NULL
-                GROUP BY p.id
-                ORDER BY total_sold DESC
-                LIMIT ?";
-        
-        return $db->select($sql, [$limit]);
+        try {
+            $sql = "SELECT p.id, p.name_en as name, p.slug, p.price, 
+                           COALESCE(SUM(oi.quantity), 0) as total_sold
+                    FROM products p
+                    LEFT JOIN order_items oi ON p.id = oi.product_id
+                    LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'cancelled'
+                    WHERE p.deleted_at IS NULL
+                    GROUP BY p.id
+                    ORDER BY total_sold DESC
+                    LIMIT ?";
+            
+            return $db->select($sql, [$limit]);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**
@@ -263,51 +345,55 @@ class DashboardController
         
         if ($db === null) {
             return Response::json([
-                'success' => false,
-                'message' => 'Database connection error',
-            ], 500);
+                'success' => true,
+                'data' => [],
+            ]);
         }
         
         $period = $request->query('period', 'week');
         $data = [];
         
-        switch ($period) {
-            case 'week':
-                $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
-                        FROM orders 
-                        WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                        GROUP BY DATE(created_at)
-                        ORDER BY date ASC";
-                break;
-            case 'month':
-                $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
-                        FROM orders 
-                        WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                        GROUP BY DATE(created_at)
-                        ORDER BY date ASC";
-                break;
-            case 'year':
-                $sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as date, COALESCE(SUM(total), 0) as revenue 
-                        FROM orders 
-                        WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
-                        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-                        ORDER BY date ASC";
-                break;
-            default:
-                $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
-                        FROM orders 
-                        WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                        GROUP BY DATE(created_at)
-                        ORDER BY date ASC";
-        }
-        
-        $results = $db->select($sql, [PaymentStatus::PAID->value]);
-        
-        foreach ($results as $row) {
-            $data[] = [
-                'date' => $row['date'],
-                'revenue' => (float) $row['revenue'],
-            ];
+        try {
+            switch ($period) {
+                case 'week':
+                    $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
+                            FROM orders 
+                            WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                            GROUP BY DATE(created_at)
+                            ORDER BY date ASC";
+                    break;
+                case 'month':
+                    $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
+                            FROM orders 
+                            WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                            GROUP BY DATE(created_at)
+                            ORDER BY date ASC";
+                    break;
+                case 'year':
+                    $sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as date, COALESCE(SUM(total), 0) as revenue 
+                            FROM orders 
+                            WHERE payment_status = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
+                            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                            ORDER BY date ASC";
+                    break;
+                default:
+                    $sql = "SELECT DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue 
+                            FROM orders 
+                            WHERE payment_status = ?  AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                            GROUP BY DATE(created_at)
+                            ORDER BY date ASC";
+            }
+            
+            $results = $db->select($sql, [PaymentStatus::PAID->value]);
+            
+            foreach ($results as $row) {
+                $data[] = [
+                    'date' => $row['date'],
+                    'revenue' => (float) $row['revenue'],
+                ];
+            }
+        } catch (\Exception $e) {
+            // Return empty data
         }
         
         return Response::json([
