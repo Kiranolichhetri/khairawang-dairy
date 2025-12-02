@@ -51,10 +51,12 @@ class HomeController
             $mongo = $app->mongo();
             
             // First try to get featured products
+            // Note: Only filter by status. Products with status='published' should be visible.
+            // We don't filter by deleted_at because MongoDB's {deleted_at: null} only matches
+            // documents where the field EXISTS and equals null, not documents where the field is missing.
             $products = $mongo->find('products', [
                 'featured' => true,
                 'status' => 'published',
-                'deleted_at' => null,
             ], [
                 'limit' => $limit,
                 'sort' => ['created_at' => -1],
@@ -64,18 +66,15 @@ class HomeController
             if (empty($products)) {
                 $products = $mongo->find('products', [
                     'status' => 'published',
-                    'deleted_at' => null,
                 ], [
                     'limit' => $limit,
                     'sort' => ['created_at' => -1],
                 ]);
             }
             
-            // If still no products, show any non-deleted products
+            // If still no products, show any products (fallback)
             if (empty($products)) {
-                $products = $mongo->find('products', [
-                    'deleted_at' => null,
-                ], [
+                $products = $mongo->find('products', [], [
                     'limit' => $limit,
                     'sort' => ['created_at' => -1],
                 ]);
@@ -169,10 +168,12 @@ class HomeController
                 $imageUrl = $image ? '/uploads/categories/' . $image : '/assets/images/category-placeholder.png';
                 
                 // Count products in this category
+                // Note: Only filter by status. We don't filter by deleted_at because
+                // MongoDB's {deleted_at: null} only matches documents where the field
+                // EXISTS and equals null, not documents where the field is missing.
                 $productCount = $app->mongo()->count('products', [
                     'category_id' => (string) ($category['_id'] ?? ''),
                     'status' => 'published',
-                    'deleted_at' => null,
                 ]);
                 
                 return [

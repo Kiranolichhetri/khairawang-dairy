@@ -32,9 +32,11 @@ class ProductController
             $mongo = $app->mongo();
             
             // Get products from MongoDB
+            // Note: Only filter by status. Products with status='published' should be visible.
+            // We don't filter by deleted_at because MongoDB's {deleted_at: null} only matches
+            // documents where the field EXISTS and equals null, not documents where the field is missing.
             $productsData = $mongo->find('products', [
                 'status' => 'published',
-                'deleted_at' => null,
             ], [
                 'sort' => ['created_at' => -1],
             ]);

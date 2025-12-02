@@ -272,11 +272,17 @@ class Product extends Model
         $app = \Core\Application::getInstance();
         if ($app?->isMongoDbDefault()) {
             // Use MongoDB aggregation to compare fields
+            // Note: We use $or to match both deleted_at: null and deleted_at not existing
+            // because MongoDB's {deleted_at: null} only matches documents where the field
+            // EXISTS and equals null, not documents where the field is missing.
             $pipeline = [
                 [
                     '$match' => [
                         'stock' => ['$gt' => 0],
-                        'deleted_at' => null,
+                        '$or' => [
+                            ['deleted_at' => null],
+                            ['deleted_at' => ['$exists' => false]],
+                        ],
                         '$expr' => [
                             '$lte' => ['$stock', '$low_stock_threshold']
                         ]

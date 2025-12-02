@@ -130,10 +130,12 @@ class Category extends Model
     {
         $app = \Core\Application::getInstance();
         if ($app?->isMongoDbDefault()) {
+            // Note: Only filter by status. We don't filter by deleted_at because
+            // MongoDB's {deleted_at: null} only matches documents where the field
+            // EXISTS and equals null, not documents where the field is missing.
             return $app->mongo()->count('products', [
                 'category_id' => (string) $this->getKey(),
                 'status' => 'published',
-                'deleted_at' => null
             ]);
         }
         
