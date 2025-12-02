@@ -152,9 +152,16 @@ class ProductController
         // Process images
         $images = $this->processImages($request);
 
+        // Handle category_id for MongoDB (string) vs MySQL (int)
+        $categoryId = $request->input('category_id');
+        $app = Application::getInstance();
+        if (!$app?->isMongoDbDefault()) {
+            $categoryId = (int) $categoryId;
+        }
+
         // Create product
         $product = Product::create([
-            'category_id' => (int) $request->input('category_id'),
+            'category_id' => $categoryId,
             'name_en' => $request->input('name_en'),
             'name_ne' => $request->input('name_ne'),
             'slug' => $request->input('slug'),
@@ -174,7 +181,6 @@ class ProductController
             'seo_description' => $request->input('seo_description'),
         ]);
 
-        $app = Application::getInstance();
         $session = $app?->session();
         $session?->success('Product created successfully!');
 
@@ -186,7 +192,7 @@ class ProductController
      */
     public function edit(Request $request, string $id): Response
     {
-        $product = Product::withTrashed()->find((int) $id, 'id');
+        $product = Product::withTrashed()->find($id, 'id');
         
         if ($product === null) {
             $app = Application::getInstance();
@@ -211,7 +217,7 @@ class ProductController
      */
     public function update(Request $request, string $id): Response
     {
-        $product = Product::withTrashed()->find((int) $id, 'id');
+        $product = Product::withTrashed()->find($id, 'id');
         
         if ($product === null) {
             if ($request->expectsJson()) {
@@ -244,7 +250,7 @@ class ProductController
 
         // Check if slug is unique (excluding current product)
         $existingProduct = Product::findBy('slug', $request->input('slug'));
-        if ($existingProduct !== null && $existingProduct->getKey() !== (int) $id) {
+        if ($existingProduct !== null && (string) $existingProduct->getKey() !== (string) $id) {
             $app = Application::getInstance();
             $session = $app?->session();
             $session?->flashErrors(['slug' => ['This slug is already in use.']]);
@@ -266,9 +272,16 @@ class ProductController
             }
         }
 
+        // Handle category_id for MongoDB (string) vs MySQL (int)
+        $categoryId = $request->input('category_id');
+        $app = Application::getInstance();
+        if (!$app?->isMongoDbDefault()) {
+            $categoryId = (int) $categoryId;
+        }
+
         // Update product
         $product->fill([
-            'category_id' => (int) $request->input('category_id'),
+            'category_id' => $categoryId,
             'name_en' => $request->input('name_en'),
             'name_ne' => $request->input('name_ne'),
             'slug' => $request->input('slug'),
@@ -289,7 +302,6 @@ class ProductController
         ]);
         $product->save();
 
-        $app = Application::getInstance();
         $session = $app?->session();
         $session?->success('Product updated successfully!');
 
@@ -308,7 +320,7 @@ class ProductController
      */
     public function delete(Request $request, string $id): Response
     {
-        $product = Product::find((int) $id);
+        $product = Product::find($id);
         
         if ($product === null) {
             if ($request->expectsJson()) {
@@ -343,7 +355,7 @@ class ProductController
      */
     public function toggleStatus(Request $request, string $id): Response
     {
-        $product = Product::find((int) $id);
+        $product = Product::find($id);
         
         if ($product === null) {
             if ($request->expectsJson()) {

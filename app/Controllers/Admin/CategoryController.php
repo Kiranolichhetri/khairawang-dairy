@@ -97,9 +97,16 @@ class CategoryController
             return Response::redirect('/admin/categories/create');
         }
 
+        // Handle parent_id for MongoDB (string) vs MySQL (int)
+        $parentId = $request->input('parent_id') ?: null;
+        $app = Application::getInstance();
+        if ($parentId !== null && !$app?->isMongoDbDefault()) {
+            $parentId = (int) $parentId;
+        }
+
         // Create category
         Category::create([
-            'parent_id' => $request->input('parent_id') ? (int) $request->input('parent_id') : null,
+            'parent_id' => $parentId,
             'name_en' => $request->input('name_en'),
             'name_ne' => $request->input('name_ne'),
             'slug' => $request->input('slug'),
@@ -109,7 +116,6 @@ class CategoryController
             'status' => $request->input('status', 'active'),
         ]);
 
-        $app = Application::getInstance();
         $session = $app?->session();
         $session?->success('Category created successfully!');
 
@@ -121,7 +127,7 @@ class CategoryController
      */
     public function edit(Request $request, string $id): Response
     {
-        $category = Category::find((int) $id);
+        $category = Category::find($id);
         
         if ($category === null) {
             $app = Application::getInstance();
@@ -133,7 +139,7 @@ class CategoryController
         
         // Get parent categories excluding current one
         $parentCategories = array_filter(Category::roots(), function($cat) use ($id) {
-            return $cat->getKey() !== (int) $id;
+            return (string) $cat->getKey() !== (string) $id;
         });
         
         return Response::view('admin.categories.edit', [
@@ -148,7 +154,7 @@ class CategoryController
      */
     public function update(Request $request, string $id): Response
     {
-        $category = Category::find((int) $id);
+        $category = Category::find($id);
         
         if ($category === null) {
             if ($request->expectsJson()) {
@@ -178,7 +184,7 @@ class CategoryController
 
         // Check if slug is unique (excluding current category)
         $existingCategory = Category::findBySlug($request->input('slug'));
-        if ($existingCategory !== null && $existingCategory->getKey() !== (int) $id) {
+        if ($existingCategory !== null && (string) $existingCategory->getKey() !== (string) $id) {
             $app = Application::getInstance();
             $session = $app?->session();
             $session?->flashErrors(['slug' => ['This slug is already in use.']]);
@@ -188,14 +194,19 @@ class CategoryController
         }
 
         // Prevent self-referencing parent
-        $parentId = $request->input('parent_id') ? (int) $request->input('parent_id') : null;
-        if ($parentId === (int) $id) {
+        $parentId = $request->input('parent_id') ?: null;
+        if ($parentId !== null && (string) $parentId === (string) $id) {
             $app = Application::getInstance();
             $session = $app?->session();
             $session?->flashErrors(['parent_id' => ['Category cannot be its own parent.']]);
             $session?->flashInput($request->all());
             
             return Response::redirect('/admin/categories/' . $id . '/edit');
+        }
+
+        // Handle parent_id for MongoDB (string) vs MySQL (int)
+        if ($parentId !== null) {
+            $parentId = $app->isMongoDbDefault() ? $parentId : (int) $parentId;
         }
 
         // Update category
@@ -230,7 +241,7 @@ class CategoryController
      */
     public function delete(Request $request, string $id): Response
     {
-        $category = Category::find((int) $id);
+        $category = Category::find($id);
         
         if ($category === null) {
             if ($request->expectsJson()) {
