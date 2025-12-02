@@ -228,6 +228,19 @@ class Product extends Model
 
     public static function findBySlug(string $slug): ?self
     {
+        $app = \Core\Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $product = $mongo->findOne('products', ['slug' => $slug]);
+            
+            if ($product) {
+                return static::hydrate((array) $product);
+            }
+            
+            return null;
+        }
+        
         return static::findBy('slug', $slug);
     }
 

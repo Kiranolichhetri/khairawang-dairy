@@ -17,6 +17,9 @@ use Core\Response;
  */
 class ProductController
 {
+    /** @var string Default placeholder image path */
+    private const PLACEHOLDER_IMAGE = '/assets/images/product-placeholder.png';
+    
     /**
      * List all products with pagination, filters, search
      * 
@@ -262,6 +265,80 @@ class ProductController
      */
     public function apiShow(Request $request, string $slug): Response
     {
+        $app = \Core\Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            
+            // Find product by slug in MongoDB
+            $productData = $mongo->findOne('products', [
+                'slug' => $slug,
+                'status' => 'published',
+            ]);
+            
+            if (!$productData) {
+                return Response::error('Product not found', 404);
+            }
+            
+            $product = $this->formatProductFromMongoRow((array) $productData);
+            
+            // Add full description
+            $product['description'] = $productData['description_en'] ?? '';
+            $product['sku'] = $productData['sku'] ?? '';
+            $product['weight'] = $productData['weight'] ?? null;
+            $product['images'] = $this->formatImages($productData['images'] ?? []);
+            
+            // Get category
+            $category = null;
+            if (!empty($productData['category_id'])) {
+                $categoryId = $productData['category_id'];
+                // Validate ObjectId format: 24 hex characters
+                $isValidObjectId = is_string($categoryId) 
+                    && strlen($categoryId) === 24 
+                    && ctype_xdigit($categoryId);
+                
+                $catData = $mongo->findOne('categories', [
+                    '_id' => $isValidObjectId
+                        ? new \MongoDB\BSON\ObjectId($categoryId)
+                        : $categoryId
+                ]);
+                if ($catData) {
+                    $category = [
+                        'id' => (string) ($catData['_id'] ?? ''),
+                        'name' => $catData['name_en'] ?? '',
+                        'slug' => $catData['slug'] ?? '',
+                    ];
+                }
+            }
+            
+            // Get related products
+            $relatedProducts = [];
+            if (!empty($productData['category_id'])) {
+                $relatedData = $mongo->find('products', [
+                    'category_id' => $productData['category_id'],
+                    '_id' => ['$ne' => $productData['_id']],
+                    'status' => 'published',
+                ], [
+                    'limit' => 4,
+                ]);
+                
+                foreach ($relatedData as $related) {
+                    $relatedProducts[] = $this->formatProductFromMongoRow((array) $related);
+                }
+            }
+            
+            return Response::json([
+                'success' => true,
+                'data' => [
+                    'product' => $product,
+                    'category' => $category,
+                    'variants' => [],
+                    'related_products' => $relatedProducts,
+                ],
+            ]);
+        }
+        
+        // MySQL fallback - existing code
         $product = Product::findBySlug($slug);
         
         if ($product === null || !$product->isPublished()) {
@@ -299,6 +376,54 @@ class ProductController
                 'related_products' => $relatedProducts,
             ],
         ]);
+    }
+    
+    /**
+     * Format images array for API response
+     * 
+     * @param array<mixed> $images
+     * @return array<string>
+     */
+    private function formatImages(array $images): array
+    {
+        if (empty($images)) {
+            return [self::PLACEHOLDER_IMAGE];
+        }
+        
+        $formatted = [];
+        foreach ($images as $img) {
+            if (!is_string($img)) {
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+                continue;
+            }
+            
+            // Validate image path to prevent path traversal and other attacks
+            if (str_contains($img, '..') || str_contains($img, "\0")) {
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+                continue;
+            }
+            
+            if (str_starts_with($img, '/uploads/')) {
+                // Trusted internal path - allow as-is
+                $formatted[] = $img;
+            } elseif (str_starts_with($img, 'https://')) {
+                // Only allow HTTPS for external images
+                $formatted[] = $img;
+            } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
+                // Simple filename (no path separators) - sanitize and validate extension
+                $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
+                // Ensure single extension and valid image extension
+                if (!empty($sanitizedImg) && preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $sanitizedImg)) {
+                    $formatted[] = '/uploads/products/' . $sanitizedImg;
+                } else {
+                    $formatted[] = self::PLACEHOLDER_IMAGE;
+                }
+            } else {
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+            }
+        }
+        
+        return empty($formatted) ? [self::PLACEHOLDER_IMAGE] : $formatted;
     }
 
     /**
