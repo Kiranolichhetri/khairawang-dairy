@@ -65,7 +65,7 @@ class Cart extends Model
     /**
      * Add item to cart
      */
-    public function addItem(int $productId, int $quantity = 1, ?int $variantId = null): bool
+    public function addItem(string|int $productId, int $quantity = 1, string|int|null $variantId = null): bool
     {
         // Check if product exists
         $product = Product::find($productId);
@@ -118,7 +118,7 @@ class Cart extends Model
     /**
      * Update item quantity
      */
-    public function updateItemQuantity(int $itemId, int $quantity): bool
+    public function updateItemQuantity(string|int $itemId, int $quantity): bool
     {
         $item = self::db()->table('cart_items')
             ->where('id', $itemId)
@@ -154,7 +154,7 @@ class Cart extends Model
     /**
      * Remove item from cart
      */
-    public function removeItem(int $itemId): bool
+    public function removeItem(string|int $itemId): bool
     {
         $deleted = self::db()->delete('cart_items', [
             'id' => $itemId,

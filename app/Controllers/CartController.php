@@ -54,11 +54,11 @@ class CartController
      */
     public function add(Request $request): Response
     {
-        $productId = (int) $request->input('product_id', 0);
+        $productId = $request->input('product_id');
         $quantity = (int) $request->input('quantity', 1);
-        $variantId = $request->input('variant_id') ? (int) $request->input('variant_id') : null;
+        $variantId = $request->input('variant_id');
         
-        if ($productId <= 0) {
+        if (empty($productId)) {
             return Response::error('Invalid product', 400);
         }
         
@@ -80,14 +80,13 @@ class CartController
      */
     public function update(Request $request, string $id): Response
     {
-        $itemId = (int) $id;
         $quantity = (int) $request->input('quantity', 1);
         
-        if ($itemId <= 0) {
+        if (empty($id)) {
             return Response::error('Invalid item', 400);
         }
         
-        $result = $this->cartService->updateItem($itemId, $quantity);
+        $result = $this->cartService->updateItem($id, $quantity);
         
         if ($result['success']) {
             return Response::json($result);
@@ -101,13 +100,11 @@ class CartController
      */
     public function remove(Request $request, string $id): Response
     {
-        $itemId = (int) $id;
-        
-        if ($itemId <= 0) {
+        if (empty($id)) {
             return Response::error('Invalid item', 400);
         }
         
-        $result = $this->cartService->removeItem($itemId);
+        $result = $this->cartService->removeItem($id);
         
         if ($result['success']) {
             return Response::json($result);
@@ -140,11 +137,11 @@ class CartController
         // Validate items structure
         $validItems = [];
         foreach ($items as $item) {
-            if (isset($item['product_id']) && is_numeric($item['product_id'])) {
+            if (isset($item['product_id']) && !empty($item['product_id'])) {
                 $validItems[] = [
-                    'product_id' => (int) $item['product_id'],
+                    'product_id' => $item['product_id'],
                     'quantity' => isset($item['quantity']) ? (int) $item['quantity'] : 1,
-                    'variant_id' => isset($item['variant_id']) ? (int) $item['variant_id'] : null,
+                    'variant_id' => $item['variant_id'] ?? null,
                 ];
             }
         }
