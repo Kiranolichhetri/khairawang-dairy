@@ -1,23 +1,18 @@
 # Dependencies
-copilot/build-custom-mvc-framework
 /vendor/
 /node_modules/
-
-node_modules/
 .pnpm-store/
 
 # Build output
 dist/
 build/
 .vite/
- main
 
 # Environment files
 .env
 .env.local
 .env.*.local
 
-copilot/build-custom-mvc-framework
 # Storage & Cache
 /storage/cache/*
 /storage/logs/*
@@ -25,15 +20,13 @@ copilot/build-custom-mvc-framework
 !/storage/logs/.gitkeep
 
 # IDE & Editors
-
-# IDE
-main
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-copilot/build-custom-mvc-framework
+
+# OS
 .DS_Store
 Thumbs.db
 
@@ -44,6 +37,12 @@ Thumbs.db
 # Uploaded files (should be managed separately)
 /public/uploads/*
 !/public/uploads/.gitkeep
+!/public/uploads/products/
+!/public/uploads/categories/
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
+/public/uploads/categories/*
+!/public/uploads/categories/.gitkeep
 
 # Testing
 /coverage/
@@ -56,13 +55,7 @@ phpunit.xml
 *.bak
 .htpasswd
 
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
-*.log
 npm-debug.log*
 
 # Cache
@@ -72,4 +65,9 @@ npm-debug.log*
 # Temporary files
 tmp/
 temp/
-main
+
+# Debug/Test files (should not be in production)
+check_*.php
+fix_*.php
+test_*.php
+debug_*.php
