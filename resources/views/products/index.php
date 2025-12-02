@@ -3,16 +3,20 @@
  * Product Listing Page
  * 
  * Displays all products with filters, search and pagination.
- * Uses Alpine.js for interactivity.
+ * Products are loaded from MongoDB via PHP, with Alpine.js for interactivity.
  */
 $view->extends('app');
 $view->section('title');
 echo 'Products';
 $view->endSection();
+
+// Get products and categories passed from controller
+$serverProducts = $products ?? [];
+$serverCategories = $categories ?? [];
 ?>
 
 <?php $view->section('content'); ?>
-<div class="min-h-screen bg-cream py-8" x-data="productListing">
+<div class="min-h-screen bg-cream py-8" x-data="productListing(<?php echo htmlspecialchars(json_encode(['products' => $serverProducts, 'categories' => $serverCategories]), ENT_QUOTES, 'UTF-8'); ?>)">
     <div class="container-dairy">
         <!-- Page Header -->
         <div class="mb-8">
@@ -151,25 +155,33 @@ $view->endSection();
 
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('productListing', () => ({
-        products: [],
-        categories: [],
-        loading: true,
+    Alpine.data('productListing', (initialData) => ({
+        // Initialize with server-side data or empty arrays
+        products: initialData?.products || [],
+        categories: initialData?.categories || [],
+        loading: false, // No loading needed if we have server data
         filters: {
             search: '',
             category: '',
             sort: 'newest'
         },
         meta: {
-            total: 0,
+            total: initialData?.products?.length || 0,
             per_page: 12,
             current_page: 1,
             last_page: 1
         },
         
         init() {
-            this.loadProducts();
-            this.loadCategories();
+            // Only load from API if we don't have server-side products
+            if (!this.products || this.products.length === 0) {
+                this.loading = true;
+                this.loadProducts();
+            }
+            // Load categories if not provided by server
+            if (!this.categories || this.categories.length === 0) {
+                this.loadCategories();
+            }
         },
         
         async loadProducts() {

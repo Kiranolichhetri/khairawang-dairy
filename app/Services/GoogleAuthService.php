@@ -22,7 +22,26 @@ class GoogleAuthService
         $app = Application::getInstance();
         $this->clientId = $app?->config('app.services.google.client_id', '') ?? $_ENV['GOOGLE_CLIENT_ID'] ?? '';
         $this->clientSecret = $app?->config('app.services.google.client_secret', '') ?? $_ENV['GOOGLE_CLIENT_SECRET'] ?? '';
-        $this->redirectUri = $app?->config('app.services.google.redirect_uri', '') ?? $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
+        $this->redirectUri = $this->getRedirectUri($app);
+    }
+
+    /**
+     * Get the redirect URI for Google OAuth
+     * 
+     * Uses GOOGLE_REDIRECT_URI if set, otherwise constructs from APP_URL
+     */
+    private function getRedirectUri(?Application $app): string
+    {
+        // First try explicit GOOGLE_REDIRECT_URI
+        $explicitUri = $app?->config('app.services.google.redirect_uri', '') ?? $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
+        if (!empty($explicitUri)) {
+            return $explicitUri;
+        }
+        
+        // Fallback: construct from APP_URL
+        $baseUrl = $app?->config('app.url', '') ?? $_ENV['APP_URL'] ?? 'http://localhost:8000';
+        $baseUrl = rtrim($baseUrl, '/');
+        return $baseUrl . '/auth/google/callback';
     }
 
     /**
@@ -34,9 +53,9 @@ class GoogleAuthService
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
             'response_type' => 'code',
-            'scope' => 'email profile',
-            'access_type' => 'online',
-            'prompt' => 'select_account',
+            'scope' => 'openid email profile',
+            'access_type' => 'offline',
+            'prompt' => 'consent',
         ];
 
         return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);
