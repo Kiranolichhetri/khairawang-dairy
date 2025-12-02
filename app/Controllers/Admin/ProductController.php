@@ -118,7 +118,25 @@ class ProductController
      */
     public function create(Request $request): Response
     {
-        $categories = Category::all();
+        $app = Application::getInstance();
+        $categories = [];
+
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $categoriesData = $mongo->find('categories', [], [
+                'sort' => ['display_order' => 1],
+            ]);
+
+            foreach ($categoriesData as $cat) {
+                $categories[] = [
+                    'id' => (string) ($cat['_id'] ?? ''),
+                    'name_en' => $cat['name_en'] ?? '',
+                    'slug' => $cat['slug'] ?? '',
+                ];
+            }
+        } else {
+            $categories = Category::all();
+        }
 
         return Response::view('admin.products.create', [
             'title'      => 'Create Product',
