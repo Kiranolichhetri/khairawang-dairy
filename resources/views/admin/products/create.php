@@ -366,7 +366,7 @@ document.getElementById('name_en').addEventListener('input', function() {
             div.className = 'relative group';
             div.innerHTML = `
                 <img src="${escapeHtml(url)}" alt="Product image" class="w-full h-32 object-cover rounded-lg border border-gray-200">
-                <button type="button" onclick="window.removeProductImage(${index})" 
+                <button type="button" onclick="window.KhairawangImageUpload.removeImage(${index})" 
                         class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -383,8 +383,9 @@ document.getElementById('name_en').addEventListener('input', function() {
         return div.innerHTML;
     }
     
-    // Expose removeImage function globally
-    window.removeProductImage = removeImage;
+    // Expose removeImage function globally via namespace
+    window.KhairawangImageUpload = window.KhairawangImageUpload || {};
+    window.KhairawangImageUpload.removeImage = removeImage;
 })();
 </script>
 <?php $view->endSection(); ?>
