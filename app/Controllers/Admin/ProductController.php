@@ -287,7 +287,24 @@ class ProductController
             $product = $this->formatProductArray($product->toArray());
         }
 
-        $categories = Category::all();
+        $categories = [];
+
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $categoriesData = $mongo->find('categories', [], [
+                'sort' => ['display_order' => 1],
+            ]);
+
+            foreach ($categoriesData as $cat) {
+                $categories[] = [
+                    'id' => (string) ($cat['_id'] ?? ''),
+                    'name_en' => $cat['name_en'] ?? '',
+                    'slug' => $cat['slug'] ?? '',
+                ];
+            }
+        } else {
+            $categories = Category::all();
+        }
 
         return Response::view('admin.products.edit', [
             'title'      => 'Edit Product',

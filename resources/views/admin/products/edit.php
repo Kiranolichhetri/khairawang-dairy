@@ -61,8 +61,18 @@ $view->extends('admin');
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-orange">
                         <option value="">Select Category</option>
                         <?php foreach ($categories as $category): ?>
-                            <option value="<?= $category->getKey() ?>" <?= ($view->old('category_id', $product['category_id'] ?? '')) == $category->getKey() ? 'selected' : '' ?>>
-                                <?= $view->e($category->attributes['name_en'] ?? '') ?>
+                            <?php 
+                                // Handle both Model objects and arrays
+                                if (is_object($category)) {
+                                    $catId = $category->getKey();
+                                    $catName = $category->attributes['name_en'] ?? '';
+                                } else {
+                                    $catId = (string) ($category['_id'] ?? $category['id'] ?? '');
+                                    $catName = $category['name_en'] ?? '';
+                                }
+                            ?>
+                            <option value="<?= $view->e($catId) ?>" <?= ($view->old('category_id', $product['category_id'] ?? '')) == $catId ? 'selected' : '' ?>>
+                                <?= $view->e($catName) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
