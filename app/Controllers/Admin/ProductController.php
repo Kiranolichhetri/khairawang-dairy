@@ -151,24 +151,6 @@ class ProductController
         ];
     }
 
-    public function create(Request $request): Response
-    {
-        $app = Application::getInstance();
-        $categories = [];
-
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $categories = $mongo->find('categories', []);
-        } else {
-            $categories = Category::all();
-        }
-
-        return Response::view('admin.products.create', [
-            'title'      => 'Add Product',
-            'categories' => $categories,
-        ]);
-    }
-
     public function store(Request $request): Response
     {
         $app = Application::getInstance();
