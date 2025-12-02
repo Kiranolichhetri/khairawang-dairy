@@ -153,7 +153,15 @@ class ProductController
 
     public function create(Request $request): Response
     {
-        $categories = Category::all();
+        $app = Application::getInstance();
+        $categories = [];
+
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $categories = $mongo->find('categories', []);
+        } else {
+            $categories = Category::all();
+        }
 
         return Response::view('admin.products.create', [
             'title'      => 'Add Product',
@@ -224,7 +232,7 @@ class ProductController
             Product::create($data);
         }
 
-        $session?->success('Product created successfully! ');
+        $session?->success('Product created successfully!');
         return Response::redirect('/admin/products');
     }
 
@@ -308,7 +316,7 @@ class ProductController
             }
         }
 
-        $session?->success('Product updated successfully! ');
+        $session?->success('Product updated successfully!');
         return Response::redirect('/admin/products');
     }
 
@@ -327,7 +335,7 @@ class ProductController
             }
         }
 
-        $session?->success('Product deleted successfully! ');
+        $session?->success('Product deleted successfully!');
 
         if ($request->expectsJson()) {
             return Response::json(['success' => true]);
