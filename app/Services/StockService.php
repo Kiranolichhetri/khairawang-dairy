@@ -16,7 +16,7 @@ class StockService
     /**
      * Check if product has sufficient stock
      */
-    public function hasStock(int $productId, int $quantity): bool
+    public function hasStock(string|int $productId, int $quantity): bool
     {
         $product = Product::find($productId);
         

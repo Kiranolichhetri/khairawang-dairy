@@ -110,7 +110,7 @@ class CartService
      * 
      * @return array<string, mixed>
      */
-    public function addItem(int $productId, int $quantity = 1, ?int $variantId = null): array
+    public function addItem(string|int $productId, int $quantity = 1, string|int|null $variantId = null): array
     {
         // Validate product
         $product = Product::find($productId);
@@ -155,7 +155,7 @@ class CartService
      * 
      * @return array<string, mixed>
      */
-    public function updateItem(int $itemId, int $quantity): array
+    public function updateItem(string|int $itemId, int $quantity): array
     {
         $cart = $this->getCart();
         
@@ -168,7 +168,8 @@ class CartService
         $item = null;
         
         foreach ($items as $cartItem) {
-            if ($cartItem['id'] === $itemId) {
+            // Compare as strings to handle both int and string IDs
+            if ((string) $cartItem['id'] === (string) $itemId) {
                 $item = $cartItem;
                 break;
             }
@@ -205,7 +206,7 @@ class CartService
      * 
      * @return array<string, mixed>
      */
-    public function removeItem(int $itemId): array
+    public function removeItem(string|int $itemId): array
     {
         $cart = $this->getCart();
         
@@ -240,7 +241,7 @@ class CartService
     /**
      * Sync guest cart with localStorage items on login
      * 
-     * @param array<array{product_id: int, quantity: int, variant_id?: int|null}> $items
+     * @param array<array{product_id: string|int, quantity: int, variant_id?: string|int|null}> $items
      * @return array<string, mixed>
      */
     public function syncCart(array $items): array
@@ -249,11 +250,11 @@ class CartService
         $errors = [];
         
         foreach ($items as $item) {
-            $productId = $item['product_id'] ?? 0;
+            $productId = $item['product_id'] ?? null;
             $quantity = $item['quantity'] ?? 1;
             $variantId = $item['variant_id'] ?? null;
             
-            if ($productId > 0 && $quantity > 0) {
+            if (!empty($productId) && $quantity > 0) {
                 $product = Product::find($productId);
                 
                 if ($product !== null && $product->isPublished()) {
