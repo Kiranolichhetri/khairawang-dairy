@@ -49,6 +49,8 @@ class HomeController
         
         if ($app?->isMongoDbDefault()) {
             $mongo = $app->mongo();
+            
+            // First try to get featured products
             $products = $mongo->find('products', [
                 'featured' => true,
                 'status' => 'published',
@@ -57,6 +59,27 @@ class HomeController
                 'limit' => $limit,
                 'sort' => ['created_at' => -1],
             ]);
+            
+            // If no featured products found, fall back to all published products
+            if (empty($products)) {
+                $products = $mongo->find('products', [
+                    'status' => 'published',
+                    'deleted_at' => null,
+                ], [
+                    'limit' => $limit,
+                    'sort' => ['created_at' => -1],
+                ]);
+            }
+            
+            // If still no products, show any non-deleted products
+            if (empty($products)) {
+                $products = $mongo->find('products', [
+                    'deleted_at' => null,
+                ], [
+                    'limit' => $limit,
+                    'sort' => ['created_at' => -1],
+                ]);
+            }
             
             return array_map(function($product) {
                 $images = $product['images'] ?? [];
@@ -125,11 +148,21 @@ class HomeController
         
         if ($app?->isMongoDbDefault()) {
             $mongo = $app->mongo();
+            
+            // First try to get categories with status: active
             $categories = $mongo->find('categories', [
                 'status' => 'active',
             ], [
                 'sort' => ['display_order' => 1],
             ]);
+            
+            // If no categories found with status filter, get all categories
+            // (handles cases where status field may not be set)
+            if (empty($categories)) {
+                $categories = $mongo->find('categories', [], [
+                    'sort' => ['display_order' => 1],
+                ]);
+            }
             
             return array_map(function($category) use ($app) {
                 $image = $category['image'] ?? null;
