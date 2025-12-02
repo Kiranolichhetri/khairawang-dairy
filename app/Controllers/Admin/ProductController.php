@@ -45,9 +45,9 @@ class ProductController
             $offset = ($page - 1) * $perPage;
 
             $productsData = $mongo->find('products', $filter, [
-                'sort'   => ['created_at' => -1],
-                'skip'   => $offset,
-                'limit'  => $perPage,
+                'sort'  => ['created_at' => -1],
+                'skip'  => $offset,
+                'limit' => $perPage,
             ]);
 
             foreach ($productsData as $row) {
@@ -152,94 +152,90 @@ class ProductController
     }
 
     public function store(Request $request): Response
-{
-    $app = Application::getInstance();
-    $session = $app? ->session();
-    
-    // Debug: Log incoming data
-    error_log("=== PRODUCT STORE ===");
-    error_log("Request data: " . json_encode($request->all()));
-    
-    // Create validator instance
-    $validator = new Validator($request->all(), [
-        'name_en' => 'required|min:2|max:255',
-        'slug' => 'required|min:2|max:255',
-        'price' => 'required|numeric',
-        'category_id' => 'required',
-        'status' => 'required',
-    ]);
+    {
+        $app = Application::getInstance();
+        $session = $app?->session();
 
-    if ($validator->fails()) {
-        error_log("Validation failed: " . json_encode($validator->errors()));
-        $session? ->flashErrors($validator->errors());
-        $session? ->flashInput($request->all());
-        return Response::redirect('/admin/products/create');
-    }
+        error_log("=== PRODUCT STORE ===");
+        error_log("Request data: " . json_encode($request->all()));
 
-    error_log("Validation passed!");
+        $validator = new Validator($request->all(), [
+            'name_en'     => 'required|min:2|max:255',
+            'slug'        => 'required|min:2|max:255',
+            'price'       => 'required|numeric',
+            'category_id' => 'required',
+            'status'      => 'required',
+        ]);
 
-    // Process images from hidden input
-    $images = [];
-    $imagesInput = $request->input('images');
-    if (!empty($imagesInput)) {
-        if (is_string($imagesInput)) {
-            $decoded = json_decode($imagesInput, true);
-            if (is_array($decoded)) {
-                $images = $decoded;
+        if ($validator->fails()) {
+            error_log("Validation failed: " . json_encode($validator->errors()));
+            $session?->flashErrors($validator->errors());
+            $session?->flashInput($request->all());
+            return Response::redirect('/admin/products/create');
+        }
+
+        error_log("Validation passed!");
+
+        $images = [];
+        $imagesInput = $request->input('images');
+
+        if (!empty($imagesInput)) {
+            if (is_string($imagesInput)) {
+                $decoded = json_decode($imagesInput, true);
+                if (is_array($decoded)) {
+                    $images = $decoded;
+                }
+            } elseif (is_array($imagesInput)) {
+                $images = $imagesInput;
             }
-        } elseif (is_array($imagesInput)) {
-            $images = $imagesInput;
-        }
-    }
-
-    // Build product data
-    $data = [
-        'name_en' => $request->input('name_en'),
-        'name_ne' => $request->input('name_ne') ??  '',
-        'slug' => $request->input('slug'),
-        'category_id' => $request->input('category_id'),
-        'short_description' => $request->input('short_description') ?? '',
-        'description_en' => $request->input('description_en') ??  '',
-        'description_ne' => $request->input('description_ne') ?? '',
-        'price' => (float) $request->input('price'),
-        'sale_price' => $request->input('sale_price') ?  (float) $request->input('sale_price') : null,
-        'sku' => $request->input('sku') ?? '',
-        'stock' => (int) $request->input('stock', 0),
-        'low_stock_threshold' => (int) $request->input('low_stock_threshold', 10),
-        'weight' => $request->input('weight') ? (float) $request->input('weight') : null,
-        'images' => $images,
-        'featured' => (bool) $request->input('featured', false),
-        'status' => $request->input('status'),
-        'seo_title' => $request->input('seo_title') ?? '',
-        'seo_description' => $request->input('seo_description') ?? '',
-        'deleted_at' => null,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s'),
-    ];
-
-    error_log("Product data: " . json_encode($data));
-
-    try {
-        if ($app?->isMongoDbDefault()) {
-            error_log("Using MongoDB.. .");
-            $mongo = $app->mongo();
-            $insertedId = $mongo->insertOne('products', $data);
-            error_log("Product inserted with ID: " .  $insertedId);
-        } else {
-            error_log("Using MySQL...");
-            Product::create($data);
         }
 
-        $session?->success('Product created successfully! ');
-        error_log("SUCCESS - Redirecting to products list");
-        return Response::redirect('/admin/products');
-        
-    } catch (\Exception $e) {
-        error_log("ERROR: " . $e->getMessage());
-        $session?->error('Failed to create product: ' . $e->getMessage());
-        return Response::redirect('/admin/products/create');
+        $data = [
+            'name_en'             => $request->input('name_en'),
+            'name_ne'             => $request->input('name_ne') ?? '',
+            'slug'                => $request->input('slug'),
+            'category_id'         => $request->input('category_id'),
+            'short_description'   => $request->input('short_description') ?? '',
+            'description_en'      => $request->input('description_en') ?? '',
+            'description_ne'      => $request->input('description_ne') ?? '',
+            'price'               => (float) $request->input('price'),
+            'sale_price'          => $request->input('sale_price') ? (float) $request->input('sale_price') : null,
+            'sku'                 => $request->input('sku') ?? '',
+            'stock'               => (int) $request->input('stock', 0),
+            'low_stock_threshold' => (int) $request->input('low_stock_threshold', 10),
+            'weight'              => $request->input('weight') ? (float) $request->input('weight') : null,
+            'images'              => $images,
+            'featured'            => (bool) $request->input('featured', false),
+            'status'              => $request->input('status'),
+            'seo_title'           => $request->input('seo_title') ?? '',
+            'seo_description'     => $request->input('seo_description') ?? '',
+            'deleted_at'          => null,
+            'created_at'          => date('Y-m-d H:i:s'),
+            'updated_at'          => date('Y-m-d H:i:s'),
+        ];
+
+        error_log("Product data: " . json_encode($data));
+
+        try {
+            if ($app?->isMongoDbDefault()) {
+                error_log("Using MongoDB...");
+                $mongo = $app->mongo();
+                $insertedId = $mongo->insertOne('products', $data);
+                error_log("Product inserted with ID: " . $insertedId);
+            } else {
+                error_log("Using MySQL...");
+                Product::create($data);
+            }
+
+            $session?->success('Product created successfully!');
+            error_log("SUCCESS - Redirecting to products list");
+            return Response::redirect('/admin/products');
+        } catch (\Exception $e) {
+            error_log("ERROR: " . $e->getMessage());
+            $session?->error('Failed to create product: ' . $e->getMessage());
+            return Response::redirect('/admin/products/create');
+        }
     }
-}
 
     public function edit(Request $request, string $id): Response
     {
@@ -276,6 +272,7 @@ class ProductController
 
         $images = [];
         $imagesInput = $request->input('images');
+
         if (!empty($imagesInput)) {
             if (is_string($imagesInput)) {
                 $decoded = json_decode($imagesInput, true);
@@ -390,6 +387,7 @@ class ProductController
         }
 
         $maxSize = 5 * 1024 * 1024;
+
         if ($file['size'] > $maxSize) {
             return Response::json(['success' => false, 'message' => 'File too large. Max 5MB'], 400);
         }
@@ -408,10 +406,9 @@ class ProductController
             'image/gif'  => 'gif',
             'image/webp' => 'webp',
         ];
+
         $ext = $extensions[$mimeType] ?? 'jpg';
-
         $filename = 'product_' . bin2hex(random_bytes(16)) . '.' . $ext;
-
         $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
 
         if (!is_dir($uploadDir)) {

@@ -9,12 +9,13 @@ use App\Models\Category;
 use App\Enums\ProductStatus;
 use Core\Request;
 use Core\Response;
+use Core\Application;
 
 /**
  * Home Controller
  * 
  * Handles the main home page display with featured products,
- * categories, and promotional content.
+ * categories, and promotional content. 
  */
 class HomeController
 {
@@ -44,16 +45,65 @@ class HomeController
      */
     private function getFeaturedProducts(int $limit = 8): array
     {
+        $app = Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $products = $mongo->find('products', [
+                'featured' => true,
+                'status' => 'published',
+                'deleted_at' => null,
+            ], [
+                'limit' => $limit,
+                'sort' => ['created_at' => -1],
+            ]);
+            
+            return array_map(function($product) {
+                $images = $product['images'] ?? [];
+                $firstImage = '/assets/images/placeholder.png';
+                if (!empty($images) && is_array($images)) {
+                    $img = $images[0];
+                    if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
+                        $firstImage = $img;
+                    } else {
+                        $firstImage = '/uploads/products/' . $img;
+                    }
+                }
+                
+                $price = (float) ($product['price'] ?? 0);
+                $salePrice = isset($product['sale_price']) && $product['sale_price'] > 0 ? (float) $product['sale_price'] : null;
+                $currentPrice = $salePrice ?? $price;
+                $isOnSale = $salePrice !== null && $salePrice < $price;
+                $discountPercentage = $isOnSale && $price > 0 ? (int) round((($price - $salePrice) / $price) * 100) : 0;
+                
+                return [
+                    'id' => (string) ($product['_id'] ?? $product['id'] ?? ''),
+                    'name' => $product['name_en'] ?? '',
+                    'slug' => $product['slug'] ?? '',
+                    'short_description' => $product['short_description'] ?? '',
+                    'price' => $price,
+                    'sale_price' => $salePrice,
+                    'current_price' => $currentPrice,
+                    'is_on_sale' => $isOnSale,
+                    'discount_percentage' => $discountPercentage,
+                    'in_stock' => ($product['stock'] ?? 0) > 0,
+                    'image' => $firstImage,
+                    'category' => null,
+                ];
+            }, $products);
+        }
+        
+        // MySQL fallback
         $products = Product::featured($limit);
         
         return array_map(function($product) {
             return [
                 'id' => $product->getKey(),
                 'name' => $product->getName(),
-                'slug' => $product->attributes['slug'],
-                'short_description' => $product->attributes['short_description'],
-                'price' => (float) $product->attributes['price'],
-                'sale_price' => $product->attributes['sale_price'] ? (float) $product->attributes['sale_price'] : null,
+                'slug' => $product->attributes['slug'] ?? '',
+                'short_description' => $product->attributes['short_description'] ?? '',
+                'price' => (float) ($product->attributes['price'] ?? 0),
+                'sale_price' => isset($product->attributes['sale_price']) ? (float) $product->attributes['sale_price'] : null,
                 'current_price' => $product->getCurrentPrice(),
                 'is_on_sale' => $product->isOnSale(),
                 'discount_percentage' => $product->getDiscountPercentage(),
@@ -71,17 +121,53 @@ class HomeController
      */
     private function getCategories(): array
     {
+        $app = Application::getInstance();
+        
+        if ($app?->isMongoDbDefault()) {
+            $mongo = $app->mongo();
+            $categories = $mongo->find('categories', [
+                'status' => 'active',
+            ], [
+                'sort' => ['display_order' => 1],
+            ]);
+            
+            return array_map(function($category) use ($app) {
+                $image = $category['image'] ?? null;
+                $imageUrl = $image ? '/uploads/categories/' . $image : '/assets/images/category-placeholder.png';
+                
+                // Count products in this category
+                $productCount = $app->mongo()->count('products', [
+                    'category_id' => (string) ($category['_id'] ?? ''),
+                    'status' => 'published',
+                    'deleted_at' => null,
+                ]);
+                
+                return [
+                    'id' => (string) ($category['_id'] ?? $category['id'] ?? ''),
+                    'name' => $category['name_en'] ?? '',
+                    'slug' => $category['slug'] ?? '',
+                    'description' => $category['description'] ?? '',
+                    'image' => $imageUrl,
+                    'product_count' => $productCount,
+                ];
+            }, $categories);
+        }
+        
+        // MySQL fallback
         $categories = Category::roots();
         
         return array_map(function($category) {
+            if ($category === null) {
+                return null;
+            }
             return [
                 'id' => $category->getKey(),
                 'name' => $category->getName(),
-                'slug' => $category->attributes['slug'],
+                'slug' => $category->attributes['slug'] ?? '',
                 'description' => $category->attributes['description'] ?? '',
                 'image' => $category->getImageUrl(),
                 'product_count' => $category->getProductCount(),
             ];
-        }, $categories);
+        }, array_filter($categories));
     }
 }
