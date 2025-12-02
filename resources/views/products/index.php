@@ -15,6 +15,7 @@ $serverProducts = $products ?? [];
 $serverCategories = $categories ?? [];
 
 // Safely encode data for Alpine.js - handle encoding failures gracefully
+// Using JSON_HEX_* flags to escape special HTML characters in a JSON-safe way
 $initialDataJson = json_encode(
     ['products' => $serverProducts, 'categories' => $serverCategories],
     JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
@@ -26,7 +27,7 @@ if ($initialDataJson === false) {
 ?>
 
 <?php $view->section('content'); ?>
-<div class="min-h-screen bg-cream py-8" x-data="productListing(<?php echo htmlspecialchars($initialDataJson, ENT_QUOTES, 'UTF-8'); ?>)">
+<div class="min-h-screen bg-cream py-8" x-data="productListing(<?php echo $initialDataJson; ?>)">
     <div class="container-dairy">
         <!-- Page Header -->
         <div class="mb-8">

@@ -79,13 +79,17 @@ class ProductController
         $firstImage = '/assets/images/placeholder.png';
         if (!empty($images) && is_array($images)) {
             $img = $images[0];
-            // Validate image path to prevent path traversal attacks
+            // Validate image path to prevent path traversal and other attacks
             if (is_string($img) && !str_contains($img, '..') && !str_contains($img, "\0")) {
-                if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
+                if (str_starts_with($img, '/uploads/')) {
+                    // Trusted internal path - allow as-is
                     $firstImage = $img;
-                } else {
-                    // Only allow alphanumeric, dash, underscore, dot and forward slash
-                    $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.\/]/', '', basename($img));
+                } elseif (str_starts_with($img, 'https://')) {
+                    // Only allow HTTPS for external images
+                    $firstImage = $img;
+                } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
+                    // Simple filename (no path separators) - sanitize and use
+                    $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
                     if (!empty($sanitizedImg)) {
                         $firstImage = '/uploads/products/' . $sanitizedImg;
                     }
