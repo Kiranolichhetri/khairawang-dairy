@@ -17,6 +17,9 @@ use Core\Response;
  */
 class ProductController
 {
+    /** @var string Default placeholder image path */
+    private const PLACEHOLDER_IMAGE = '/assets/images/product-placeholder.png';
+    
     /**
      * List all products with pagination, filters, search
      * 
@@ -288,10 +291,16 @@ class ProductController
             // Get category
             $category = null;
             if (!empty($productData['category_id'])) {
+                $categoryId = $productData['category_id'];
+                // Validate ObjectId format: 24 hex characters
+                $isValidObjectId = is_string($categoryId) 
+                    && strlen($categoryId) === 24 
+                    && ctype_xdigit($categoryId);
+                
                 $catData = $mongo->findOne('categories', [
-                    '_id' => is_string($productData['category_id']) && strlen($productData['category_id']) === 24
-                        ? new \MongoDB\BSON\ObjectId($productData['category_id'])
-                        : $productData['category_id']
+                    '_id' => $isValidObjectId
+                        ? new \MongoDB\BSON\ObjectId($categoryId)
+                        : $categoryId
                 ]);
                 if ($catData) {
                     $category = [
@@ -378,18 +387,43 @@ class ProductController
     private function formatImages(array $images): array
     {
         if (empty($images)) {
-            return ['/assets/images/product-placeholder.png'];
+            return [self::PLACEHOLDER_IMAGE];
         }
         
-        return array_map(function($img) {
+        $formatted = [];
+        foreach ($images as $img) {
             if (!is_string($img)) {
-                return '/assets/images/product-placeholder.png';
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+                continue;
             }
-            if (str_starts_with($img, '/uploads/') || str_starts_with($img, 'http')) {
-                return $img;
+            
+            // Validate image path to prevent path traversal and other attacks
+            if (str_contains($img, '..') || str_contains($img, "\0")) {
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+                continue;
             }
-            return '/uploads/products/' . $img;
-        }, $images);
+            
+            if (str_starts_with($img, '/uploads/')) {
+                // Trusted internal path - allow as-is
+                $formatted[] = $img;
+            } elseif (str_starts_with($img, 'https://')) {
+                // Only allow HTTPS for external images
+                $formatted[] = $img;
+            } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
+                // Simple filename (no path separators) - sanitize and validate extension
+                $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
+                // Ensure single extension and valid image extension
+                if (!empty($sanitizedImg) && preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $sanitizedImg)) {
+                    $formatted[] = '/uploads/products/' . $sanitizedImg;
+                } else {
+                    $formatted[] = self::PLACEHOLDER_IMAGE;
+                }
+            } else {
+                $formatted[] = self::PLACEHOLDER_IMAGE;
+            }
+        }
+        
+        return empty($formatted) ? [self::PLACEHOLDER_IMAGE] : $formatted;
     }
 
     /**
