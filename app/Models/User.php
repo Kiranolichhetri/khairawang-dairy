@@ -12,11 +12,12 @@ use App\Enums\UserRole;
  * User Model
  * 
  * Represents a user in the system with authentication and role capabilities.
+ * Supports both MySQL and MongoDB backends.
  */
 class User extends Model
 {
     protected static string $table = 'users';
-    
+
     protected static array $fillable = [
         'role_id',
         'email',
@@ -27,20 +28,33 @@ class User extends Model
         'google_id',
         'email_verified_at',
         'status',
+        'remember_token',
     ];
-    
+
     protected static array $hidden = [
         'password',
         'remember_token',
     ];
-    
+
     protected static array $casts = [
-        'id' => 'integer',
+        'id' => 'string',
         'role_id' => 'string',
         'email_verified_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Create a User instance from MongoDB document
+     */
+    public static function fromMongo(array $data): self
+    {
+        $user = new self();
+        $user->attributes = $data;
+        $user->id = (string) ($data['_id'] ?? $data['id'] ?? null);
+        $user->remember_token = $data['remember_token'] ?? null;
+        return $user;
+    }
 
     /**
      * Hash password before saving
@@ -84,11 +98,11 @@ class User extends Model
     public function getRole(): ?UserRole
     {
         $roleData = $this->belongsTo(Role::class, 'role_id');
-        
+
         if ($roleData === null) {
             return null;
         }
-        
+
         return UserRole::tryFrom($roleData['name'] ?? '');
     }
 
@@ -153,19 +167,19 @@ class User extends Model
     public static function authenticate(string $email, string $password): ?self
     {
         $user = static::findByEmail($email);
-        
+
         if ($user === null) {
             return null;
         }
-        
+
         if (!$user->verifyPassword($password)) {
             return null;
         }
-        
+
         if (!$user->isActive()) {
             return null;
         }
-        
+
         return $user;
     }
 
@@ -177,7 +191,7 @@ class User extends Model
         $token = bin2hex(random_bytes(32));
         $this->remember_token = hash('sha256', $token);
         $this->save();
-        
+
         return $token;
     }
 
@@ -203,16 +217,14 @@ class User extends Model
     public function getAvatarUrl(): string
     {
         $avatar = $this->attributes['avatar'] ?? null;
-        
+
         if ($avatar) {
-            // Check if it's a full URL (from Google)
             if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
                 return $avatar;
             }
             return '/uploads/avatars/' . $avatar;
         }
-        
-        // Return gravatar as default
+
         $hash = md5(strtolower(trim($this->attributes['email'] ?? '')));
         return "https://www.gravatar.com/avatar/{$hash}?d=mp&s=200";
     }
@@ -234,27 +246,23 @@ class User extends Model
     public static function findByRole(UserRole $role): array
     {
         $app = Application::getInstance();
-        
+
         if ($app?->isMongoDbDefault()) {
-            // For MongoDB
             $roleData = static::mongo()->findOne('roles', ['name' => $role->value]);
-            
+
             if ($roleData === null) {
                 return [];
             }
-            
+
             return static::findAllBy('role_id', (string) ($roleData['_id'] ?? $roleData['id']));
         }
-        
-        // For MySQL
-        $roleData = self::db()->table('roles')
-            ->where('name', $role->value)
-            ->first();
-        
+
+        $roleData = self::db()->table('roles')->where('name', $role->value)->first();
+
         if ($roleData === null) {
             return [];
         }
-        
+
         return static::findAllBy('role_id', $roleData['id']);
     }
 }
@@ -265,12 +273,12 @@ class User extends Model
 class Role extends Model
 {
     protected static string $table = 'roles';
-    
+
     protected static array $fillable = [
         'name',
         'permissions',
     ];
-    
+
     protected static array $casts = [
         'id' => 'string',
         'permissions' => 'json',
