@@ -24,6 +24,8 @@ $initialDataJson = json_encode(
 if ($initialDataJson === false) {
     $initialDataJson = '{"products":[],"categories":[]}';
 }
+// IMPORTANT: Escape for use in HTML attribute
+$initialDataJson = htmlspecialchars($initialDataJson, ENT_QUOTES, 'UTF-8');
 ?>
 
 <?php $view->section('content'); ?>
