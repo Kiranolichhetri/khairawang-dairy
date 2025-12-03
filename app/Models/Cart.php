@@ -431,6 +431,20 @@ class Cart extends Model
     }
 
     /**
+     * Get MongoDB _id filter from a raw ID value
+     * 
+     * @param mixed $id The ID value (can be string, ObjectId, etc.)
+     * @return array<string, mixed>
+     */
+    private static function getMongoIdFilterFromValue(mixed $id): array
+    {
+        if (is_string($id) && MongoDB::isValidObjectId($id)) {
+            return ['_id' => MongoDB::objectId($id)];
+        }
+        return ['_id' => $id];
+    }
+
+    /**
      * Get item count
      */
     public function getItemCount(): int
@@ -640,11 +654,8 @@ class Cart extends Model
         // Delete guest cart
         $guestId = $guestCart['_id'] ?? null;
         if ($guestId) {
-            if (is_string($guestId) && MongoDB::isValidObjectId($guestId)) {
-                $mongo->deleteOne(static::$table, ['_id' => MongoDB::objectId($guestId)]);
-            } else {
-                $mongo->deleteOne(static::$table, ['_id' => $guestId]);
-            }
+            $filter = static::getMongoIdFilterFromValue($guestId);
+            $mongo->deleteOne(static::$table, $filter);
         }
     }
 
