@@ -69,12 +69,27 @@ class CartService
         $subtotal = 0.0;
         
         foreach ($items as $item) {
-            $price = $item['sale_price'] > 0 ? (float) $item['sale_price'] : (float) $item['price'];
+            $salePrice = $item['sale_price'] ?? null;
+            $price = ($salePrice !== null && $salePrice > 0) ? (float) $salePrice : (float) $item['price'];
             $itemTotal = $price * $item['quantity'];
             $subtotal += $itemTotal;
             
-            $images = json_decode($item['images'] ?? '[]', true);
-            $primaryImage = !empty($images) ? '/uploads/products/' . $images[0] : '/assets/images/product-placeholder.png';
+            // Handle images - can be JSON string (MySQL) or array (MongoDB)
+            $images = $item['images'] ?? [];
+            if (is_string($images)) {
+                $images = json_decode($images, true) ?? [];
+            }
+            
+            $primaryImage = '/assets/images/product-placeholder.png';
+            if (!empty($images) && is_array($images)) {
+                $firstImage = $images[0];
+                // Check if already has path prefix
+                if (str_starts_with($firstImage, '/uploads/') || str_starts_with($firstImage, 'http')) {
+                    $primaryImage = $firstImage;
+                } else {
+                    $primaryImage = '/uploads/products/' . $firstImage;
+                }
+            }
             
             $cartItems[] = [
                 'id' => $item['id'],
