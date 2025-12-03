@@ -199,7 +199,13 @@ abstract class Model
             }
             
             if (static::$softDeletes) {
-                $filter[static::$deletedAtColumn] = null;
+                // MongoDB's {deleted_at: null} only matches documents where the field
+                // EXISTS and equals null. Use $or to also match documents where the
+                // field is missing entirely (which is the case for non-deleted records).
+                $filter['$or'] = [
+                    [static::$deletedAtColumn => null],
+                    [static::$deletedAtColumn => ['$exists' => false]],
+                ];
             }
             
             $data = static::mongo()->findOne(static::getTable(), $filter);

@@ -170,10 +170,22 @@ class MongoQueryBuilder
 
     /**
      * Add where NULL clause
+     * Note: For MongoDB, {field: null} only matches documents where the field
+     * EXISTS and equals null. To also match documents where the field is missing,
+     * we use $or with $exists: false.
      */
     public function whereNull(string $field): self
     {
-        $this->filter[$field] = null;
+        // Use $or to match both null values and missing fields
+        if (!isset($this->filter['$and'])) {
+            $this->filter['$and'] = [];
+        }
+        $this->filter['$and'][] = [
+            '$or' => [
+                [$field => null],
+                [$field => ['$exists' => false]],
+            ]
+        ];
         return $this;
     }
 

@@ -582,13 +582,29 @@ document.addEventListener('alpine:init', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    this.$store.toast.success('Added to cart!');
-                    this.$store.cart.refresh();
+                    // Use alert as fallback if toast store doesn't exist
+                    if (this.$store && this.$store.toast) {
+                        this.$store.toast.success('Added to cart!');
+                    } else {
+                        alert('Added to cart!');
+                    }
+                    if (this.$store && this.$store.cart) {
+                        this.$store.cart.refresh();
+                    }
                 } else {
-                    this.$store.toast.error(data.message || 'Failed to add to cart');
+                    if (this.$store && this.$store.toast) {
+                        this.$store.toast.error(data.message || 'Failed to add to cart');
+                    } else {
+                        alert(data.message || 'Failed to add to cart');
+                    }
                 }
             } catch (error) {
-                this.$store.toast.error('Failed to add to cart');
+                console.error('Add to cart error:', error);
+                if (this.$store && this.$store.toast) {
+                    this.$store.toast.error('Failed to add to cart');
+                } else {
+                    alert('Failed to add to cart');
+                }
             }
         }
     }));
