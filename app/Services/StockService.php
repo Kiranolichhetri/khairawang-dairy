@@ -18,13 +18,35 @@ class StockService
      */
     public function hasStock(string|int $productId, int $quantity): bool
     {
+        $app = \Core\Application::getInstance();
+        
+        // Use MongoDB if it's the default connection
+        if ($app?->isMongoDbDefault()) {
+            try {
+                $mongo = $app->mongo();
+                $product = $mongo->findOne('products', [
+                    '_id' => new \MongoDB\BSON\ObjectId($productId)
+                ]);
+                
+                if ($product === null) {
+                    return false;
+                }
+                
+                $stock = (int) ($product['stock'] ?? 0);
+                return $stock >= $quantity;
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
+        
+        // Fallback to MySQL
         $product = Product::find($productId);
         
         if ($product === null) {
             return false;
         }
         
-        return $product->attributes['stock'] >= $quantity;
+        return ($product->attributes['stock'] ?? 0) >= $quantity;
     }
 
     /**
