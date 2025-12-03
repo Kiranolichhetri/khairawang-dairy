@@ -151,6 +151,19 @@ $view->extends('admin');
                 <!-- Uploaded images will appear here -->
             </div>
             
+            <!-- Add URL input field -->
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Or paste image URL</label>
+                <div class="flex gap-2">
+                    <input type="text" id="image-url-input" placeholder="https://images.unsplash.com/..." 
+                           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-orange">
+                    <button type="button" id="add-url-btn" 
+                            class="px-4 py-2 bg-accent-orange text-white rounded-lg hover:bg-accent-orange-dark">
+                        Add URL
+                    </button>
+                </div>
+            </div>
+            
             <input type="hidden" name="images" id="images-json" value="<?= $view->e($view->old('images', '[]')) ?>">
         </div>
         
@@ -379,7 +392,29 @@ $view->extends('admin');
     // Expose removeImage function globally via namespace
     window.KhairawangImageUpload = window.KhairawangImageUpload || {};
     window.KhairawangImageUpload.removeImage = removeImage;
+    window.KhairawangImageUpload.addImageToPreview = addImageToPreview;
 })();
+
+// Add URL button functionality
+document.getElementById('add-url-btn').addEventListener('click', function() {
+    const urlInput = document.getElementById('image-url-input');
+    const url = urlInput.value.trim();
+    
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        window.KhairawangImageUpload.addImageToPreview(url);
+        urlInput.value = '';
+    } else {
+        alert('Please enter a valid image URL starting with http:// or https://');
+    }
+});
+
+// Allow pressing Enter to add URL
+document.getElementById('image-url-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('add-url-btn').click();
+    }
+});
 
 // Auto-generate slug from name
 document.getElementById('name_en').addEventListener('input', function() {

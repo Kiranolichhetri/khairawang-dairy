@@ -239,10 +239,13 @@ class ProductController
             if (is_string($imagesInput)) {
                 $decoded = json_decode($imagesInput, true);
                 if (is_array($decoded)) {
-                    $images = $decoded;
+                    // Filter out empty strings
+                    $images = array_filter($decoded, fn($img) => !empty(trim($img)));
+                    $images = array_values($images); // Re-index array
                 }
             } elseif (is_array($imagesInput)) {
-                $images = $imagesInput;
+                $images = array_filter($imagesInput, fn($img) => !empty(trim($img)));
+                $images = array_values($images);
             }
         }
 
@@ -331,10 +334,13 @@ class ProductController
             if (is_string($imagesInput)) {
                 $decoded = json_decode($imagesInput, true);
                 if (is_array($decoded)) {
-                    $images = $decoded;
+                    // Filter out empty strings
+                    $images = array_filter($decoded, fn($img) => !empty(trim($img)));
+                    $images = array_values($images); // Re-index array
                 }
             } elseif (is_array($imagesInput)) {
-                $images = $imagesInput;
+                $images = array_filter($imagesInput, fn($img) => !empty(trim($img)));
+                $images = array_values($images);
             }
         }
 
@@ -463,10 +469,12 @@ class ProductController
 
         $ext = $extensions[$mimeType] ?? 'jpg';
         $filename = 'product_' . bin2hex(random_bytes(16)) . '.' . $ext;
-        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+        $uploadDir = dirname(__DIR__, 3) . '/public/uploads/products';
 
         if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+            if (!mkdir($uploadDir, 0755, true)) {
+                return Response::json(['success' => false, 'message' => 'Failed to create upload directory'], 500);
+            }
         }
 
         $destination = $uploadDir . '/' . $filename;
