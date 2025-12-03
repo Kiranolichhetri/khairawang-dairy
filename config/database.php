@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 return [
-    'default' => env('DB_CONNECTION', 'mongodb'),
+    // Hardcode to mongodb (env() is not loading properly)
+    'default' => 'mongodb',
 
     'connections' => [
         'mysql' => [
@@ -22,8 +23,8 @@ return [
         ],
         'mongodb' => [
             'driver' => 'mongodb',
-            'uri' => env('MONGO_URI', 'mongodb://localhost:27017'),
-            'database' => env('MONGO_DATABASE', 'khairawang_dairy'),
+            'uri' => 'mongodb+srv://kiranoli421_db_user:keFt9XKE7oIdaAY2@cluster0.dxc9xkf.mongodb.net/',
+            'database' => 'khairawang_dairy',
         ],
     ],
 
