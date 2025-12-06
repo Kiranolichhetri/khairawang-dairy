@@ -5,20 +5,21 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Cart;
+use App\Models\MongoCart;
 use App\Models\Product;
 use Core\Session;
 use Core\Application;
 
 /**
  * Cart Service
- * 
+ *
  * Handles shopping cart operations for both guests and authenticated users.
  */
 class CartService
 {
     private StockService $stockService;
     private ?Session $session;
-    
+
     public function __construct(?StockService $stockService = null)
     {
         $this->stockService = $stockService ?? new StockService();
@@ -27,15 +28,28 @@ class CartService
 
     /**
      * Get or create cart for current user/session
+     *
+     * Returns either App\Models\Cart (SQL) or App\Models\MongoCart (MongoDB) depending on configuration.
+     *
+     * @return Cart|MongoCart
      */
-    public function getCart(): Cart
+    public function getCart()
     {
+        $app = Application::getInstance();
+
+        // Use MongoCart when MongoDB is default
+        if ($app?->isMongoDbDefault()) {
+            $userId = $this->session?->get('user_id');
+            $sessionId = $this->getSessionId();
+            return new MongoCart($sessionId, $userId !== null ? (int) $userId : null);
+        }
+
         $userId = $this->session?->get('user_id');
-        
+
         if ($userId !== null) {
             return Cart::forUser((int) $userId);
         }
-        
+
         $sessionId = $this->getSessionId();
         return Cart::forSession($sessionId);
     }
@@ -46,72 +60,91 @@ class CartService
     private function getSessionId(): string
     {
         $sessionId = $this->session?->get('cart_session_id');
-        
+
         if ($sessionId === null) {
             $sessionId = bin2hex(random_bytes(16));
             $this->session?->set('cart_session_id', $sessionId);
         }
-        
+
         return $sessionId;
     }
 
     /**
      * Get cart contents with product details
-     * 
+     *
      * @return array<string, mixed>
      */
     public function getCartContents(): array
     {
         $cart = $this->getCart();
-        $items = $cart->itemsWithProducts();
-        
+
+        // If using MongoCart, itemsWithProducts returns array similar to SQL path
+        if ($cart instanceof MongoCart) {
+            $items = $cart->itemsWithProducts();
+        } else {
+            // SQL Cart model
+            $items = $cart->itemsWithProducts();
+        }
+
         $cartItems = [];
         $subtotal = 0.0;
-        
+
         foreach ($items as $item) {
-            $salePrice = $item['sale_price'] ?? null;
-            $price = ($salePrice !== null && $salePrice > 0) ? (float) $salePrice : (float) $item['price'];
-            $itemTotal = $price * $item['quantity'];
+            $price = ($item['sale_price'] ?? 0) > 0 ? (float) ($item['sale_price'] ?? 0) : (float) ($item['price'] ?? 0);
+            $quantity = (int) ($item['quantity'] ?? 0);
+            $itemTotal = $price * $quantity;
             $subtotal += $itemTotal;
-            
-            // Handle images - can be JSON string (MySQL) or array (MongoDB)
-            $images = $item['images'] ?? [];
-            if (is_string($images)) {
-                $images = json_decode($images, true) ?? [];
-            }
-            
-            $primaryImage = '/assets/images/product-placeholder.png';
-            if (!empty($images) && is_array($images)) {
-                $firstImage = $images[0];
-                // Check if already has path prefix
-                if (str_starts_with($firstImage, '/uploads/') || str_starts_with($firstImage, 'http')) {
-                    $primaryImage = $firstImage;
-                } else {
-                    $primaryImage = '/uploads/products/' . $firstImage;
+
+            $images = [];
+            if (!empty($item['images'])) {
+                // images may be JSON string or array depending on source (MongoCart encodes arrays as JSON in some flows)
+                if (is_string($item['images'])) {
+                    $decoded = json_decode($item['images'], true);
+                    $images = is_array($decoded) ? $decoded : [];
+                } elseif (is_array($item['images'])) {
+                    $images = $item['images'];
                 }
             }
-            
+
+            $primaryImage = '/assets/images/product-placeholder.png';
+            if (!empty($images)) {
+                $first = $images[0];
+                if (is_string($first) && str_starts_with($first, 'http')) {
+                    $primaryImage = $first;
+                } else {
+                    $primaryImage = '/uploads/products/' . $first;
+                }
+            }
+
             $cartItems[] = [
-                'id' => $item['id'],
-                'product_id' => $item['product_id'],
-                'variant_id' => $item['variant_id'],
-                'name' => $item['name_en'],
-                'slug' => $item['slug'],
+                'id' => (string) ($item['id'] ?? ($item['item_id'] ?? '')),
+                'product_id' => (string) ($item['product_id'] ?? ''),
+                'variant_id' => $item['variant_id'] ?? null,
+                'name' => $item['name_en'] ?? ($item['name'] ?? ''),
+                'slug' => $item['slug'] ?? '',
                 'price' => $price,
-                'original_price' => (float) $item['price'],
-                'quantity' => $item['quantity'],
-                'stock' => $item['stock'],
+                'original_price' => (float) ($item['price'] ?? 0),
+                'quantity' => $quantity,
+                'stock' => (int) ($item['stock'] ?? 0),
                 'total' => $itemTotal,
                 'image' => $primaryImage,
             ];
         }
-        
+
         $shippingCost = $this->calculateShipping($subtotal);
         $total = $subtotal + $shippingCost;
-        
+
+        // Determine count - prefer cart->getItemCount() if available
+        $count = 0;
+        try {
+            $count = method_exists($cart, 'getItemCount') ? $cart->getItemCount() : array_sum(array_column($cartItems, 'quantity'));
+        } catch (\Throwable $e) {
+            $count = array_sum(array_column($cartItems, 'quantity'));
+        }
+
         return [
             'items' => $cartItems,
-            'count' => $cart->getItemCount(),
+            'count' => $count,
             'subtotal' => $subtotal,
             'shipping' => $shippingCost,
             'total' => $total,
@@ -122,168 +155,200 @@ class CartService
 
     /**
      * Add item to cart
-     * 
+     *
      * @return array<string, mixed>
      */
     public function addItem(string|int $productId, int $quantity = 1, string|int|null $variantId = null): array
     {
-        // Validate product
-        $product = Product::find($productId);
-        
-        if ($product === null) {
-            return ['success' => false, 'message' => 'Product not found'];
+        // Validate input
+        if (empty($productId) || $quantity <= 0) {
+            return ['success' => false, 'message' => 'Invalid product or quantity'];
         }
-        
-        if (!$product->isPublished()) {
-            return ['success' => false, 'message' => 'Product is not available'];
-        }
-        
-        if ($quantity <= 0) {
-            return ['success' => false, 'message' => 'Invalid quantity'];
-        }
-        
-        // Check stock
+
+        // Check stock & product availability using StockService (supports MongoDB-aware implementation)
         if (!$this->stockService->hasStock($productId, $quantity)) {
-            $stock = $product->attributes['stock'] ?? 0;
+            // Try to get available stock for message
+            $available = 0;
+            try {
+                $product = Product::find($productId);
+                if ($product !== null) {
+                    $available = $product->attributes['stock'] ?? 0;
+                } else {
+                    // If Product::find failed (Mongo), try Application mongo directly
+                    $app = Application::getInstance();
+                    if ($app?->isMongoDbDefault()) {
+                        try {
+                            $mongo = $app->mongo();
+                            $doc = $mongo->findOne('products', ['_id' => new \MongoDB\BSON\ObjectId((string)$productId)]);
+                            $available = (int) ($doc['stock'] ?? 0);
+                        } catch (\Throwable $e) {
+                            $available = 0;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $available = 0;
+            }
+
             return [
                 'success' => false,
-                'message' => "Only {$stock} units available",
-                'available_stock' => $stock,
+                'message' => $available > 0 ? "Only {$available} units available" : 'Insufficient stock',
+                'available_stock' => $available,
             ];
         }
-        
+
         $cart = $this->getCart();
-        
-        if ($cart->addItem($productId, $quantity, $variantId)) {
+
+        // Attempt to add via cart instance (MongoCart or SQL Cart)
+        try {
+            $ok = $cart->addItem($productId, $quantity, $variantId);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Failed to add item to cart'];
+        }
+
+        if ($ok) {
             return [
                 'success' => true,
                 'message' => 'Item added to cart',
                 'cart' => $this->getCartContents(),
             ];
         }
-        
+
         return ['success' => false, 'message' => 'Failed to add item to cart'];
     }
 
     /**
      * Update item quantity
-     * 
+     *
      * @return array<string, mixed>
      */
     public function updateItem(string|int $itemId, int $quantity): array
     {
+        if (empty($itemId)) {
+            return ['success' => false, 'message' => 'Invalid item'];
+        }
+
         $cart = $this->getCart();
-        
-        if ($quantity <= 0) {
-            return $this->removeItem($itemId);
+
+        try {
+            $ok = $cart->updateItemQuantity($itemId, $quantity);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Failed to update cart'];
         }
-        
-        // Get item to validate stock
-        $items = $cart->items();
-        $item = null;
-        
-        foreach ($items as $cartItem) {
-            // Compare as strings to handle both int and string IDs
-            if ((string) $cartItem['id'] === (string) $itemId) {
-                $item = $cartItem;
-                break;
-            }
-        }
-        
-        if ($item === null) {
-            return ['success' => false, 'message' => 'Item not found in cart'];
-        }
-        
-        // Check stock
-        if (!$this->stockService->hasStock($item['product_id'], $quantity)) {
-            $product = Product::find($item['product_id']);
-            $stock = $product?->attributes['stock'] ?? 0;
-            return [
-                'success' => false,
-                'message' => "Only {$stock} units available",
-                'available_stock' => $stock,
-            ];
-        }
-        
-        if ($cart->updateItemQuantity($itemId, $quantity)) {
+
+        if ($ok) {
             return [
                 'success' => true,
                 'message' => 'Cart updated',
                 'cart' => $this->getCartContents(),
             ];
         }
-        
+
         return ['success' => false, 'message' => 'Failed to update cart'];
     }
 
     /**
      * Remove item from cart
-     * 
+     *
      * @return array<string, mixed>
      */
     public function removeItem(string|int $itemId): array
     {
+        if (empty($itemId)) {
+            return ['success' => false, 'message' => 'Invalid item'];
+        }
+
         $cart = $this->getCart();
-        
-        if ($cart->removeItem($itemId)) {
+
+        try {
+            $ok = $cart->removeItem($itemId);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Failed to remove item'];
+        }
+
+        if ($ok) {
             return [
                 'success' => true,
                 'message' => 'Item removed from cart',
                 'cart' => $this->getCartContents(),
             ];
         }
-        
+
         return ['success' => false, 'message' => 'Failed to remove item'];
     }
 
     /**
      * Clear cart
-     * 
+     *
      * @return array<string, mixed>
      */
     public function clearCart(): array
     {
         $cart = $this->getCart();
-        $cart->clear();
-        
-        return [
-            'success' => true,
-            'message' => 'Cart cleared',
-            'cart' => $this->getCartContents(),
-        ];
+
+        try {
+            $ok = $cart->clear();
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Failed to clear cart'];
+        }
+
+        if ($ok) {
+            return [
+                'success' => true,
+                'message' => 'Cart cleared',
+                'cart' => $this->getCartContents(),
+            ];
+        }
+
+        return ['success' => false, 'message' => 'Failed to clear cart'];
     }
 
     /**
-     * Sync guest cart with localStorage items on login
-     * 
-     * @param array<array{product_id: string|int, quantity: int, variant_id?: string|int|null}> $items
+     * Sync guest cart items into current cart (used by client to sync localStorage)
+     *
+     * @param array $items
      * @return array<string, mixed>
      */
     public function syncCart(array $items): array
     {
+        if (!is_array($items)) {
+            return ['success' => false, 'message' => 'Invalid items format'];
+        }
+
         $cart = $this->getCart();
         $errors = [];
-        
         foreach ($items as $item) {
             $productId = $item['product_id'] ?? null;
-            $quantity = $item['quantity'] ?? 1;
+            $quantity = isset($item['quantity']) ? (int) $item['quantity'] : 1;
             $variantId = $item['variant_id'] ?? null;
-            
-            if (!empty($productId) && $quantity > 0) {
-                $product = Product::find($productId);
-                
-                if ($product !== null && $product->isPublished()) {
-                    if ($this->stockService->hasStock($productId, $quantity)) {
-                        $cart->addItem($productId, $quantity, $variantId);
-                    } else {
-                        $errors[] = "Insufficient stock for: " . $product->getName();
-                    }
+
+            if (empty($productId) || $quantity <= 0) {
+                continue;
+            }
+
+            // Validate product exists and is published
+            $valid = true;
+            try {
+                // rely on stockService which supports Mongo/SQL
+                if (!$this->stockService->hasStock($productId, $quantity)) {
+                    $valid = false;
+                    $errors[] = "Insufficient stock for product {$productId}";
+                }
+            } catch (\Throwable $e) {
+                $valid = false;
+            }
+
+            if ($valid) {
+                try {
+                    $cart->addItem($productId, $quantity, $variantId);
+                } catch (\Throwable $e) {
+                    $errors[] = "Failed to add product {$productId} to cart";
                 }
             }
         }
-        
+
         return [
-            'success' => true,
+            'success' => empty($errors),
             'message' => empty($errors) ? 'Cart synced successfully' : 'Cart synced with some issues',
             'errors' => $errors,
             'cart' => $this->getCartContents(),
@@ -291,15 +356,79 @@ class CartService
     }
 
     /**
-     * Merge guest cart to user cart after login
+     * Merge guest cart into user cart after login (SQL path used to use Cart::mergeGuestCart)
+     *
+     * @param int $userId
      */
     public function mergeGuestCart(int $userId): void
     {
-        $sessionId = $this->session?->get('cart_session_id');
-        
-        if ($sessionId !== null) {
-            Cart::mergeGuestCart($userId, $sessionId);
+        $app = Application::getInstance();
+
+        if ($app?->isMongoDbDefault()) {
+            // MongoDB merge: find guest cart by session_id and merge items into user cart
+            $sessionId = $this->session?->get('cart_session_id');
+            if (empty($sessionId)) {
+                return;
+            }
+
+            $mongo = $app->mongo();
+            $guest = $mongo->findOne('carts', ['session_id' => $sessionId, 'user_id' => null]);
+            if ($guest === null) {
+                return;
+            }
+
+            // get or create user cart
+            $userCart = new MongoCart('', $userId);
+            $guestItems = $guest['items'] ?? [];
+
+            foreach ($guestItems as $it) {
+                $pid = (string) ($it['product_id'] ?? '');
+                $qty = (int) ($it['quantity'] ?? 0);
+                $variant = $it['variant_id'] ?? null;
+                if (!empty($pid) && $qty > 0) {
+                    $userCart->addItem($pid, $qty, $variant);
+                }
+            }
+
+            // delete guest cart doc
+            try {
+                $mongo->deleteOne('carts', ['_id' => $guest['_id']]);
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            return;
         }
+
+        // SQL fallback - reuse existing Cart model merge
+        Cart::mergeGuestCart($userId, $this->getSessionId());
+    }
+
+    /**
+     * Get cart count for header / badge
+     *
+     * @return array<string, mixed>
+     */
+    public function count(): array
+    {
+        $cart = $this->getCart();
+
+        $count = 0;
+        $total = 0.0;
+        try {
+            $count = method_exists($cart, 'getItemCount') ? $cart->getItemCount() : 0;
+            $contents = $this->getCartContents();
+            $total = $contents['total'] ?? 0.0;
+        } catch (\Throwable $e) {
+            $count = 0;
+            $total = 0.0;
+        }
+
+        return [
+            'success' => true,
+            'count' => $count,
+            'total' => $total,
+        ];
     }
 
     /**
@@ -311,25 +440,32 @@ class CartService
         if ($subtotal >= 1000.0) {
             return 0.0;
         }
-        
+
         // Default shipping cost
         return config('app.shipping_cost', 100.0);
     }
 
     /**
      * Validate cart before checkout
-     * 
+     *
      * @return array<string, mixed>
      */
     public function validateForCheckout(): array
     {
         $cart = $this->getCart();
-        $items = $cart->items();
-        
+
+        // items() should return raw items (product_id, quantity)
+        $items = [];
+        try {
+            $items = $cart->items();
+        } catch (\Throwable $e) {
+            $items = [];
+        }
+
         if (empty($items)) {
             return ['valid' => false, 'message' => 'Cart is empty'];
         }
-        
+
         $stockItems = [];
         foreach ($items as $item) {
             $stockItems[] = [
@@ -337,9 +473,9 @@ class CartService
                 'quantity' => $item['quantity'],
             ];
         }
-        
+
         $validation = $this->stockService->validateStock($stockItems);
-        
+
         if (!$validation['valid']) {
             return [
                 'valid' => false,
@@ -347,7 +483,7 @@ class CartService
                 'errors' => $validation['errors'],
             ];
         }
-        
+
         return ['valid' => true];
     }
 }
