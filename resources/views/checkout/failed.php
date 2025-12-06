@@ -11,9 +11,18 @@ $request = new Request();
 $error = htmlspecialchars($request->query('error', 'Your payment could not be processed.'));
 $orderNumber = htmlspecialchars($request->query('order', ''));
 
-// Get contact information from config
-$contactPhone = config('app.contact_phone', '+977-1-XXXXXXX');
-$contactEmail = config('app.contact_email', 'support@khairawangdairy.com');
+// Get contact information from config with fallbacks
+$contactPhone = '+977-9800000000'; // Default
+$contactEmail = 'support@khairawangdairy.com'; // Default
+
+try {
+    if (function_exists('config')) {
+        $contactPhone = config('app.contact_phone', $contactPhone);
+        $contactEmail = config('app.contact_email', $contactEmail);
+    }
+} catch (\Exception $e) {
+    // Use defaults if config fails
+}
 
 $view->extends('app');
 $view->section('title');

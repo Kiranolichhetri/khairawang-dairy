@@ -240,8 +240,8 @@ document.addEventListener('alpine:init', () => {
                 this.errors.name = 'Name is required';
             } else if (this.form.name.trim().length < 3) {
                 this.errors.name = 'Name must be at least 3 characters';
-            } else if (!/^[a-zA-Z\s]+$/.test(this.form.name.trim())) {
-                this.errors.name = 'Name can only contain letters and spaces';
+            } else if (!/^[\p{L}\s'-]+$/u.test(this.form.name.trim())) {
+                this.errors.name = 'Name can only contain letters, spaces, hyphens, and apostrophes';
             }
             
             // Email validation

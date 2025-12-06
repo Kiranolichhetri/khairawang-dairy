@@ -460,7 +460,7 @@ class SecurityMonitor
 
 ```
 Security Team: security@khairawangdairy.com
-On-Call Phone: +977-XXXXXXXXX
+On-Call Phone: +977-9800000000
 eSewa Support: merchant@esewa.com.np
 ```
 

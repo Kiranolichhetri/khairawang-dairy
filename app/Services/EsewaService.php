@@ -421,13 +421,30 @@ class EsewaService
         }
         
         try {
-            // Get storage path from application config or use default
+            // Get storage path from application config or use environment variable
             $app = Application::getInstance();
-            $storagePath = $app?->config('app.storage_path') ?? __DIR__ . '/../../storage';
+            $storagePath = $app?->config('app.storage_path');
+            
+            // If not in config, try environment variable
+            if (empty($storagePath) && defined('STORAGE_PATH')) {
+                $storagePath = STORAGE_PATH;
+            }
+            
+            // Final fallback (though this should be avoided in production)
+            if (empty($storagePath)) {
+                $storagePath = realpath(__DIR__ . '/../../storage');
+                if ($storagePath === false) {
+                    // Can't determine storage path, use error_log
+                    error_log("eSewa Log [{$level}]: {$message}" . (!empty($context) ? ' ' . json_encode($context) : ''));
+                    return;
+                }
+            }
+            
             $logDir = $storagePath . '/logs';
             
             if (!is_dir($logDir)) {
-                if (!mkdir($logDir, 0755, true) && !is_dir($logDir)) {
+                // Use restrictive permissions for sensitive payment logs (0750)
+                if (!mkdir($logDir, 0750, true) && !is_dir($logDir)) {
                     // Failed to create directory, log to error_log instead
                     error_log("Failed to create log directory: {$logDir}");
                     return;
