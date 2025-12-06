@@ -14,7 +14,9 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../vendor/autoload.php';
+// Determine project root directory
+$projectRoot = dirname(__DIR__, 2);
+require_once $projectRoot . '/vendor/autoload.php';
 
 use Core\Application;
 use Core\Request;
@@ -47,7 +49,7 @@ echo "╚═══════════════════════�
 
 try {
     // Initialize application
-    $app = new Application(__DIR__ . '/../..');
+    $app = new Application($projectRoot);
     
     // Check if MongoDB is default
     title('Configuration Check');
@@ -91,7 +93,7 @@ try {
     title('Session Management');
     $session = $app->session();
     $session->start();
-    $testSessionId = 'test_' . bin2hex(random_bytes(8));
+    $testSessionId = 'test_' . bin2hex(random_bytes(16)); // 32 hex characters
     $session->set('cart_session_id', $testSessionId);
     success("Test session created: $testSessionId");
     
