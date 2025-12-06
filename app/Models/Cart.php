@@ -517,13 +517,10 @@ class Cart extends Model
                 'items' => [],
             ]);
             
-            return static::hydrate([
-                '_id' => $id,
-                'id' => $id,
-                'user_id' => $userId,
-                'session_id' => null,
-                'items' => [],
-            ]);
+            // Fetch the created cart to get complete data with timestamps
+            $cart = $mongo->findOne(static::$table, ['_id' => MongoDB::objectId($id)]);
+            
+            return static::hydrate($cart);
         }
         
         $cartData = static::query()
@@ -557,13 +554,10 @@ class Cart extends Model
                 'items' => [],
             ]);
             
-            return static::hydrate([
-                '_id' => $id,
-                'id' => $id,
-                'session_id' => $sessionId,
-                'user_id' => null,
-                'items' => [],
-            ]);
+            // Fetch the created cart to get complete data with timestamps
+            $cart = $mongo->findOne(static::$table, ['_id' => MongoDB::objectId($id)]);
+            
+            return static::hydrate($cart);
         }
         
         $cartData = self::db()->table(static::$table)
