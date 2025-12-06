@@ -52,8 +52,8 @@ class MongoCart
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result = $this->mongo()->insertOne('carts', $doc);
-            $this->document = $this->mongo()->findOne(['_id' => $result->getInsertedId()]);
+            $insertedId = $this->mongo()->insertOne('carts', $doc);
+            $this->document = $this->mongo()->findOne('carts', ['_id' => new ObjectId($insertedId)]);
         }
     }
 
