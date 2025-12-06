@@ -74,6 +74,17 @@ return [
     ],
 
     /**
+     * Contact information for support
+     */
+    'contact_phone' => env('CONTACT_PHONE', '+977-9800000000'),
+    'contact_email' => env('CONTACT_EMAIL', 'support@khairawangdairy.com'),
+
+    /**
+     * Storage paths
+     */
+    'storage_path' => __DIR__ . '/../storage',
+
+    /**
      * Pagination defaults
      */
     'pagination' => [

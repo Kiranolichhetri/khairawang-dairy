@@ -420,17 +420,34 @@ class EsewaService
             return;
         }
         
-        $logDir = __DIR__ . '/../../storage/logs';
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+        try {
+            // Get storage path from application config or use default
+            $app = Application::getInstance();
+            $storagePath = $app?->config('app.storage_path') ?? __DIR__ . '/../../storage';
+            $logDir = $storagePath . '/logs';
+            
+            if (!is_dir($logDir)) {
+                if (!mkdir($logDir, 0755, true) && !is_dir($logDir)) {
+                    // Failed to create directory, log to error_log instead
+                    error_log("Failed to create log directory: {$logDir}");
+                    return;
+                }
+            }
+            
+            $logFile = $logDir . '/esewa-' . date('Y-m-d') . '.log';
+            $timestamp = date('Y-m-d H:i:s');
+            $contextStr = !empty($context) ? ' ' . json_encode($context) : '';
+            $logEntry = "[{$timestamp}] [{$level}] {$message}{$contextStr}\n";
+            
+            // Use file_put_contents with error checking
+            if (file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX) === false) {
+                // Fallback to error_log if file write fails
+                error_log("eSewa Log [{$level}]: {$message}" . $contextStr);
+            }
+        } catch (\Exception $e) {
+            // Ensure logging failures don't break the application
+            error_log("Failed to write eSewa log: " . $e->getMessage());
         }
-        
-        $logFile = $logDir . '/esewa-' . date('Y-m-d') . '.log';
-        $timestamp = date('Y-m-d H:i:s');
-        $contextStr = !empty($context) ? ' ' . json_encode($context) : '';
-        $logEntry = "[{$timestamp}] [{$level}] {$message}{$contextStr}\n";
-        
-        file_put_contents($logFile, $logEntry, FILE_APPEND);
     }
 
     /**

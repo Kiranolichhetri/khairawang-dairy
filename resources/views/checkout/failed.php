@@ -4,6 +4,17 @@
  * 
  * Displays payment failure message and recovery options.
  */
+
+use Core\Request;
+
+$request = new Request();
+$error = htmlspecialchars($request->query('error', 'Your payment could not be processed.'));
+$orderNumber = htmlspecialchars($request->query('order', ''));
+
+// Get contact information from config
+$contactPhone = config('app.contact_phone', '+977-1-XXXXXXX');
+$contactEmail = config('app.contact_email', 'support@khairawangdairy.com');
+
 $view->extends('app');
 $view->section('title');
 echo 'Payment Failed';
@@ -26,16 +37,13 @@ $view->endSection();
 
             <!-- Error Message -->
             <p class="text-gray-600 mb-2">
-                <?php 
-                $error = $_GET['error'] ?? 'Your payment could not be processed.';
-                echo htmlspecialchars($error);
-                ?>
+                <?php echo $error; ?>
             </p>
 
             <!-- Order Number (if available) -->
-            <?php if (!empty($_GET['order'])): ?>
+            <?php if (!empty($orderNumber)): ?>
                 <p class="text-sm text-gray-500 mb-6">
-                    Order Number: <span class="font-medium text-dark-brown"><?php echo htmlspecialchars($_GET['order']); ?></span>
+                    Order Number: <span class="font-medium text-dark-brown"><?php echo $orderNumber; ?></span>
                 </p>
             <?php endif; ?>
 
@@ -78,8 +86,8 @@ $view->endSection();
 
             <!-- Action Buttons -->
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <?php if (!empty($_GET['order'])): ?>
-                    <a href="/account/orders/<?php echo htmlspecialchars($_GET['order']); ?>" 
+                <?php if (!empty($orderNumber)): ?>
+                    <a href="/account/orders/<?php echo $orderNumber; ?>" 
                        class="btn btn-secondary justify-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -114,7 +122,7 @@ $view->endSection();
                         Contact Support
                     </a>
                     <span class="text-gray-400 hidden sm:inline">|</span>
-                    <a href="tel:+977-1-XXXXXXX" class="text-accent-orange hover:underline flex items-center gap-1">
+                    <a href="tel:<?php echo $contactPhone; ?>" class="text-accent-orange hover:underline flex items-center gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                         </svg>

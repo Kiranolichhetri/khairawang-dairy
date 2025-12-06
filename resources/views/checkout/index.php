@@ -46,7 +46,7 @@ $view->endSection();
                             <input type="text" x-model="form.name" required
                                    class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent-orange focus:border-transparent"
                                    placeholder="Enter your full name">
-                            <p x-show="errors.name" class="mt-1 text-sm text-error-red" x-text="errors.name"></p>
+                            <p x-show="errors.name" class="mt-1 text-sm text-error-red" x-text="errors.name" data-error></p>
                         </div>
                         
                         <div>
@@ -54,7 +54,7 @@ $view->endSection();
                             <input type="email" x-model="form.email" required
                                    class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent-orange focus:border-transparent"
                                    placeholder="your@email.com">
-                            <p x-show="errors.email" class="mt-1 text-sm text-error-red" x-text="errors.email"></p>
+                            <p x-show="errors.email" class="mt-1 text-sm text-error-red" x-text="errors.email" data-error></p>
                         </div>
                         
                         <div>
@@ -62,7 +62,7 @@ $view->endSection();
                             <input type="tel" x-model="form.phone" required
                                    class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent-orange focus:border-transparent"
                                    placeholder="98XXXXXXXX">
-                            <p x-show="errors.phone" class="mt-1 text-sm text-error-red" x-text="errors.phone"></p>
+                            <p x-show="errors.phone" class="mt-1 text-sm text-error-red" x-text="errors.phone" data-error></p>
                         </div>
                         
                         <div class="md:col-span-2">
@@ -70,7 +70,7 @@ $view->endSection();
                             <textarea x-model="form.address" required rows="3"
                                       class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent-orange focus:border-transparent"
                                       placeholder="Enter your full delivery address"></textarea>
-                            <p x-show="errors.address" class="mt-1 text-sm text-error-red" x-text="errors.address"></p>
+                            <p x-show="errors.address" class="mt-1 text-sm text-error-red" x-text="errors.address" data-error></p>
                         </div>
                         
                         <div>
@@ -235,11 +235,26 @@ document.addEventListener('alpine:init', () => {
         validateForm() {
             this.errors = {};
             
-            if (!this.form.name.trim()) this.errors.name = 'Name is required';
-            if (!this.form.email.trim()) this.errors.email = 'Email is required';
-            else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(this.form.email)) this.errors.email = 'Invalid email format';
-            if (!this.form.phone.trim()) this.errors.phone = 'Phone is required';
-            else {
+            // Name validation
+            if (!this.form.name.trim()) {
+                this.errors.name = 'Name is required';
+            } else if (this.form.name.trim().length < 3) {
+                this.errors.name = 'Name must be at least 3 characters';
+            } else if (!/^[a-zA-Z\s]+$/.test(this.form.name.trim())) {
+                this.errors.name = 'Name can only contain letters and spaces';
+            }
+            
+            // Email validation
+            if (!this.form.email.trim()) {
+                this.errors.email = 'Email is required';
+            } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(this.form.email)) {
+                this.errors.email = 'Please enter a valid email address';
+            }
+            
+            // Phone validation
+            if (!this.form.phone.trim()) {
+                this.errors.phone = 'Phone is required';
+            } else {
                 const phoneDigits = this.form.phone.replace(/[^0-9]/g, '');
                 // Validate Nepal mobile numbers (start with 98, 97, or 96)
                 if (phoneDigits.length === 10) {
@@ -250,14 +265,38 @@ document.addEventListener('alpine:init', () => {
                     this.errors.phone = 'Phone number must be 10-15 digits';
                 }
             }
-            if (!this.form.address.trim()) this.errors.address = 'Address is required';
-            if (!this.form.payment_method) this.errors.payment_method = 'Select payment method';
+            
+            // Address validation
+            if (!this.form.address.trim()) {
+                this.errors.address = 'Delivery address is required';
+            } else if (this.form.address.trim().length < 10) {
+                this.errors.address = 'Please provide a complete address (at least 10 characters)';
+            }
+            
+            // Payment method validation
+            if (!this.form.payment_method) {
+                this.errors.payment_method = 'Please select a payment method';
+            }
+            
+            // Scroll to first error if validation fails
+            if (Object.keys(this.errors).length > 0) {
+                this.$nextTick(() => {
+                    const firstError = document.querySelector('[data-error]');
+                    if (firstError) {
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
             
             return Object.keys(this.errors).length === 0;
         },
         
         async submitOrder() {
-            if (!this.validateForm()) return;
+            if (!this.validateForm()) {
+                // Show toast notification for validation errors
+                this.$store.toast.error('Please fix the errors in the form');
+                return;
+            }
             
             this.submitting = true;
             try {
@@ -271,27 +310,41 @@ document.addEventListener('alpine:init', () => {
                 if (data.success) {
                     // Handle eSewa redirect
                     if (data.redirect && data.method === 'esewa') {
+                        // Show processing message
+                        this.$store.toast.info('Redirecting to eSewa payment gateway...');
+                        
                         this.esewaData = {
                             payment_url: data.payment_url,
                             params: data.params
                         };
-                        this.$nextTick(() => {
+                        
+                        // Wait a moment to show the message
+                        setTimeout(() => {
                             this.$refs.esewaForm.submit();
-                        });
+                        }, 500);
                         return;
                     }
                     
                     // For COD, redirect to confirmation
+                    this.$store.toast.success('Order placed successfully!');
                     this.$store.cart.refresh();
-                    window.location.href = data.redirect_url || '/checkout/success/' + data.order.order_number;
+                    
+                    // Small delay to show success message
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url || '/checkout/success/' + data.order.order_number;
+                    }, 500);
                 } else {
-                    this.$store.toast.error(data.message || 'Failed to place order');
+                    // Handle server-side validation errors
                     if (data.errors) {
                         this.errors = data.errors;
+                        this.$store.toast.error('Please fix the errors in the form');
+                    } else {
+                        this.$store.toast.error(data.message || 'Failed to place order. Please try again.');
                     }
                 }
             } catch (error) {
-                this.$store.toast.error('Failed to place order');
+                console.error('Checkout error:', error);
+                this.$store.toast.error('Network error. Please check your connection and try again.');
             } finally {
                 this.submitting = false;
             }
