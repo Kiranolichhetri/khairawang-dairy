@@ -224,6 +224,90 @@ export function initCartStore() {
         if (Alpine.store('toast')) {
           Alpine.store('toast').show(message, 'success');
         }
+      },
+
+      /**
+       * Sync cart with server and refresh
+       */
+      async refresh() {
+        try {
+          const response = await fetch('/api/v1/cart', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to fetch cart from server');
+            return;
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.data && data.data.items) {
+            // Update items from server
+            this.items = data.data.items.map(item => ({
+              id: item.product_id,
+              name: item.name,
+              price: item.price,
+              image: item.image,
+              quantity: item.quantity
+            }));
+            this.save();
+          }
+        } catch (error) {
+          console.error('Error refreshing cart:', error);
+        }
+      },
+
+      /**
+       * Add product to cart via API (server-side)
+       * @param {string|number} productId - Product ID
+       * @param {number} quantity - Quantity to add
+       * @param {string|number|null} variantId - Variant ID (optional)
+       * @returns {Promise<object>} Response data
+       */
+      async addViaApi(productId, quantity = 1, variantId = null) {
+        this.isLoading = true;
+        
+        try {
+          const response = await fetch('/api/v1/cart/items', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              product_id: productId,
+              quantity: quantity,
+              variant_id: variantId
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            // Refresh cart from server
+            await this.refresh();
+            this.showNotification(data.message || 'Item added to cart');
+          } else {
+            if (Alpine.store('toast')) {
+              Alpine.store('toast').show(data.message || 'Failed to add item', 'error');
+            }
+          }
+          
+          return data;
+        } catch (error) {
+          console.error('Error adding to cart:', error);
+          if (Alpine.store('toast')) {
+            Alpine.store('toast').show('Failed to add item to cart', 'error');
+          }
+          return { success: false, message: 'Network error' };
+        } finally {
+          this.isLoading = false;
+        }
       }
     });
   });
