@@ -234,7 +234,6 @@ export function initCartStore() {
           const response = await fetch('/api/v1/cart', {
             method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
               'Accept': 'application/json'
             }
           });
@@ -269,6 +268,15 @@ export function initCartStore() {
       },
 
       /**
+       * Get CSRF token from meta tag
+       * @returns {string} CSRF token or empty string
+       */
+      getCsrfToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+      },
+
+      /**
        * Add product to cart via API (server-side)
        * @param {string|number} productId - Product ID
        * @param {number} quantity - Quantity to add
@@ -279,12 +287,20 @@ export function initCartStore() {
         this.isLoading = true;
         
         try {
+          const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          };
+          
+          // Add CSRF token if available
+          const csrfToken = this.getCsrfToken();
+          if (csrfToken) {
+            headers['X-CSRF-TOKEN'] = csrfToken;
+          }
+          
           const response = await fetch('/api/v1/cart/items', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({
               product_id: productId,
               quantity: quantity,
