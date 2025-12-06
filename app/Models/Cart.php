@@ -241,8 +241,9 @@ class Cart extends Model
         if (!$found) {
             // Add new item with unique ID
             // Use 'item_id' for MongoDB to match MongoCart convention
+            // Prefix with 'item_' to distinguish from MongoDB ObjectIds
             $items[] = [
-                'item_id' => bin2hex(random_bytes(12)),
+                'item_id' => 'item_' . bin2hex(random_bytes(12)),
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'variant_id' => $variantId,

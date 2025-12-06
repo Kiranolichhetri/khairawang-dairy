@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Core\Application;
+use Core\MongoDB;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\UTCDateTime;
 
@@ -53,7 +54,7 @@ class MongoCart
                 'updated_at' => $now,
             ];
             $insertedId = $this->mongo()->insertOne('carts', $doc);
-            $this->document = $this->mongo()->findOne('carts', ['_id' => new ObjectId($insertedId)]);
+            $this->document = $this->mongo()->findOne('carts', ['_id' => MongoDB::objectId($insertedId)]);
         }
     }
 
