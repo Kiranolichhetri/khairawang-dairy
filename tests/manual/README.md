@@ -4,13 +4,13 @@ This directory contains manual test scripts for verifying functionality that req
 
 ## MongoDB Cart Test
 
-**File**: `test_mongodb_cart.php`
+**File**: `mongodb_cart_test.php`
 
 **Purpose**: Tests MongoDB cart operations end-to-end without requiring HTTP requests.
 
 **Usage**:
 ```bash
-php tests/manual/test_mongodb_cart.php
+php tests/manual/mongodb_cart_test.php
 ```
 
 **Prerequisites**:
