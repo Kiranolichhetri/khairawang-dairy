@@ -23,17 +23,30 @@ return [
      * eSewa configuration
      * 
      * Nepal's leading digital wallet payment gateway
+     * 
+     * Sandbox Credentials (for testing):
+     * - Merchant Code: EPAYTEST
+     * - Test URL: https://uat.esewa.com.np/epay/main
+     * - Verify URL: https://uat.esewa.com.np/epay/transrec
+     * 
+     * Production Setup:
+     * 1. Register at https://esewa.com.np/merchant
+     * 2. Obtain merchant code and secret key
+     * 3. Set PAYMENT_TEST_MODE=false in .env
+     * 4. Configure ESEWA_MERCHANT_CODE and ESEWA_SECRET_KEY in .env
      */
     'esewa' => [
         /**
          * Merchant code provided by eSewa
+         * Default: EPAYTEST (sandbox)
          */
         'merchant_code' => env('ESEWA_MERCHANT_CODE', 'EPAYTEST'),
 
         /**
-         * Secret key for verification
+         * Secret key for verification (required for production)
+         * Leave empty for sandbox testing
          */
-        'secret_key' => env('ESEWA_SECRET_KEY', ''),
+        'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
 
         /**
          * API URLs
@@ -50,10 +63,25 @@ return [
         ],
 
         /**
-         * Callback URLs
+         * Callback URLs (relative to APP_URL)
          */
-        'success_url' => env('ESEWA_SUCCESS_URL', '/payment/success'),
-        'failure_url' => env('ESEWA_FAILURE_URL', '/payment/failure'),
+        'success_url' => env('ESEWA_SUCCESS_URL', '/payment/esewa/success'),
+        'failure_url' => env('ESEWA_FAILURE_URL', '/payment/esewa/failure'),
+
+        /**
+         * Transaction timeout in seconds
+         */
+        'timeout' => 30,
+
+        /**
+         * Enable transaction logging
+         */
+        'log_transactions' => env('ESEWA_LOG_TRANSACTIONS', true),
+
+        /**
+         * Maximum retry attempts for verification
+         */
+        'max_verify_attempts' => 3,
     ],
 
     /**

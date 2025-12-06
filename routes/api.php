@@ -92,7 +92,7 @@ $router->group(['prefix' => '/api/v1'], function(Router $router) {
 // ==================================================
 
 $router->group(['prefix' => '/api/payment'], function(Router $router) {
-    // eSewa callback
+    // eSewa callback (should not have CSRF protection)
     $router->get('/esewa/success', [EsewaController::class, 'success'], 'api.payment.esewa.success');
     $router->get('/esewa/failure', [EsewaController::class, 'failure'], 'api.payment.esewa.failure');
     $router->post('/esewa/verify', [EsewaController::class, 'verify'], 'api.payment.esewa.verify');

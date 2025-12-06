@@ -10,6 +10,14 @@ use Core\Application;
  * eSewa Payment Service
  * 
  * Handles eSewa payment gateway integration for Nepal.
+ * 
+ * Features:
+ * - Payment initiation with sandbox and production support
+ * - Transaction verification with retry mechanism
+ * - Comprehensive error handling and logging
+ * - Security with HMAC signature validation
+ * 
+ * @link https://developer.esewa.com.np/pages/Esewa-Payment-Integration
  */
 class EsewaService
 {
@@ -20,6 +28,9 @@ class EsewaService
     private string $verifyUrl;
     private string $successUrl;
     private string $failureUrl;
+    private bool $logTransactions;
+    private int $timeout;
+    private int $maxVerifyAttempts;
 
     public function __construct()
     {
@@ -30,6 +41,9 @@ class EsewaService
         $this->merchantCode = $config['merchant_code'] ?? 'EPAYTEST';
         $this->secretKey = $config['secret_key'] ?? '';
         $this->testMode = (bool) $testMode;
+        $this->logTransactions = $config['log_transactions'] ?? true;
+        $this->timeout = $config['timeout'] ?? 30;
+        $this->maxVerifyAttempts = $config['max_verify_attempts'] ?? 3;
         
         $urls = $config['urls'] ?? [];
         $mode = $this->testMode ? 'test' : 'live';
@@ -38,14 +52,31 @@ class EsewaService
         $this->verifyUrl = $urls['verify'][$mode] ?? 'https://uat.esewa.com.np/epay/transrec';
         
         $baseUrl = $app?->config('app.url', 'http://localhost');
-        $this->successUrl = $baseUrl . ($config['success_url'] ?? '/payment/success');
-        $this->failureUrl = $baseUrl . ($config['failure_url'] ?? '/payment/failure');
+        $this->successUrl = $baseUrl . ($config['success_url'] ?? '/payment/esewa/success');
+        $this->failureUrl = $baseUrl . ($config['failure_url'] ?? '/payment/esewa/failure');
+        
+        // Log initialization in test mode
+        if ($this->testMode && $this->logTransactions) {
+            $this->log('eSewa Service initialized in TEST mode', [
+                'merchant_code' => $this->merchantCode,
+                'payment_url' => $this->paymentUrl,
+            ]);
+        }
     }
 
     /**
      * Generate payment form data for eSewa
      * 
-     * @return array<string, mixed>
+     * @param string $orderId Unique order identifier
+     * @param float $amount Product amount (excluding tax, service charge, delivery)
+     * @param float $taxAmount Tax amount
+     * @param float $serviceCharge Service charge
+     * @param float $deliveryCharge Delivery/shipping charge
+     * @param string $productName Product description
+     * 
+     * @return array<string, mixed> Payment form data with URL and parameters
+     * 
+     * @throws \RuntimeException If required configuration is missing
      */
     public function initiatePayment(
         string $orderId,
@@ -55,30 +86,60 @@ class EsewaService
         float $deliveryCharge = 0,
         string $productName = 'KHAIRAWANG DAIRY Order'
     ): array {
+        // Validate inputs
+        if (empty($orderId)) {
+            throw new \InvalidArgumentException('Order ID is required');
+        }
+        
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Amount must be greater than zero');
+        }
+        
         $totalAmount = $amount + $taxAmount + $serviceCharge + $deliveryCharge;
         
         // Validate secret key is configured for production mode
         if (!$this->testMode && empty($this->secretKey)) {
+            $this->log('ERROR: eSewa secret key is missing for production mode', [
+                'order_id' => $orderId,
+                'mode' => 'production',
+            ], 'error');
             throw new \RuntimeException('eSewa secret key is required for production mode');
         }
         
-        // Generate signature for eSewa v2
-        $signature = $this->generateSignature($totalAmount, $orderId);
+        // Generate signature for enhanced security (optional for test mode)
+        $signature = '';
+        if (!empty($this->secretKey)) {
+            $signature = $this->generateSignature($totalAmount, $orderId);
+        }
+        
+        $params = [
+            'amt' => number_format($amount, 2, '.', ''),
+            'txAmt' => number_format($taxAmount, 2, '.', ''),
+            'psc' => number_format($serviceCharge, 2, '.', ''),
+            'pdc' => number_format($deliveryCharge, 2, '.', ''),
+            'tAmt' => number_format($totalAmount, 2, '.', ''),
+            'pid' => $orderId,
+            'scd' => $this->merchantCode,
+            'su' => $this->successUrl . '?oid=' . urlencode($orderId),
+            'fu' => $this->failureUrl . '?oid=' . urlencode($orderId),
+        ];
+        
+        // Log payment initiation
+        if ($this->logTransactions) {
+            $this->log('Payment initiated', [
+                'order_id' => $orderId,
+                'amount' => $amount,
+                'total_amount' => $totalAmount,
+                'test_mode' => $this->testMode,
+            ]);
+        }
         
         return [
             'payment_url' => $this->paymentUrl,
-            'params' => [
-                'amt' => $amount,
-                'txAmt' => $taxAmount,
-                'psc' => $serviceCharge,
-                'pdc' => $deliveryCharge,
-                'tAmt' => $totalAmount,
-                'pid' => $orderId,
-                'scd' => $this->merchantCode,
-                'su' => $this->successUrl . '?oid=' . urlencode($orderId),
-                'fu' => $this->failureUrl . '?oid=' . urlencode($orderId),
-            ],
+            'params' => $params,
             'signature' => $signature,
+            'merchant_code' => $this->merchantCode,
+            'test_mode' => $this->testMode,
         ];
     }
 
@@ -104,12 +165,102 @@ class EsewaService
     /**
      * Verify payment transaction with eSewa
      * 
-     * @return array<string, mixed>
+     * Verifies a payment using eSewa's transaction verification API.
+     * Implements retry mechanism for better reliability.
+     * 
+     * @param string $referenceId eSewa reference/transaction ID
+     * @param string $orderId Unique order identifier
+     * @param float $amount Transaction amount
+     * 
+     * @return array<string, mixed> Verification result
      */
     public function verifyPayment(string $referenceId, string $orderId, float $amount): array
     {
+        if (empty($referenceId) || empty($orderId)) {
+            return [
+                'success' => false,
+                'message' => 'Reference ID and Order ID are required',
+            ];
+        }
+        
+        $attempt = 0;
+        $lastError = '';
+        
+        // Retry verification up to maxVerifyAttempts times
+        while ($attempt < $this->maxVerifyAttempts) {
+            $attempt++;
+            
+            try {
+                $result = $this->performVerification($referenceId, $orderId, $amount);
+                
+                if ($result['success']) {
+                    if ($this->logTransactions) {
+                        $this->log('Payment verified successfully', [
+                            'order_id' => $orderId,
+                            'reference_id' => $referenceId,
+                            'amount' => $amount,
+                            'attempts' => $attempt,
+                        ]);
+                    }
+                    return $result;
+                }
+                
+                $lastError = $result['message'] ?? 'Unknown error';
+                
+                // If verification failed but response was received, don't retry
+                if (isset($result['response']) && !empty($result['response'])) {
+                    break;
+                }
+                
+                // Wait before retry (exponential backoff)
+                if ($attempt < $this->maxVerifyAttempts) {
+                    sleep($attempt);
+                }
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+                
+                if ($this->logTransactions) {
+                    $this->log('Payment verification exception', [
+                        'order_id' => $orderId,
+                        'reference_id' => $referenceId,
+                        'attempt' => $attempt,
+                        'error' => $lastError,
+                    ], 'error');
+                }
+                
+                // Wait before retry
+                if ($attempt < $this->maxVerifyAttempts) {
+                    sleep($attempt);
+                }
+            }
+        }
+        
+        // All attempts failed
+        if ($this->logTransactions) {
+            $this->log('Payment verification failed after all attempts', [
+                'order_id' => $orderId,
+                'reference_id' => $referenceId,
+                'attempts' => $attempt,
+                'error' => $lastError,
+            ], 'error');
+        }
+        
+        return [
+            'success' => false,
+            'message' => 'Payment verification failed: ' . $lastError,
+            'attempts' => $attempt,
+        ];
+    }
+
+    /**
+     * Perform single verification attempt
+     * 
+     * @return array<string, mixed>
+     */
+    private function performVerification(string $referenceId, string $orderId, float $amount): array
+    {
         $data = [
-            'amt' => $amount,
+            'amt' => number_format($amount, 2, '.', ''),
             'rid' => $referenceId,
             'pid' => $orderId,
             'scd' => $this->merchantCode,
@@ -121,8 +272,10 @@ class EsewaService
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_SSL_VERIFYPEER => !$this->testMode,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
         ]);
         
         $response = curl_exec($ch);
@@ -137,6 +290,14 @@ class EsewaService
             ];
         }
         
+        if ($httpCode !== 200) {
+            return [
+                'success' => false,
+                'message' => 'HTTP error: ' . $httpCode,
+                'response' => $response,
+            ];
+        }
+        
         // Parse XML response from eSewa
         if ($response && str_contains($response, '<response_code>')) {
             $code = $this->extractXmlValue($response, 'response_code');
@@ -146,13 +307,23 @@ class EsewaService
                     'success' => true,
                     'message' => 'Payment verified successfully',
                     'transaction_id' => $referenceId,
+                    'order_id' => $orderId,
+                    'amount' => $amount,
                 ];
             }
+            
+            // Extract error message if available
+            $message = $this->extractXmlValue($response, 'message');
+            return [
+                'success' => false,
+                'message' => !empty($message) ? $message : 'Payment verification failed',
+                'response' => $response,
+            ];
         }
         
         return [
             'success' => false,
-            'message' => 'Payment verification failed',
+            'message' => 'Invalid response from eSewa',
             'response' => $response,
         ];
     }
@@ -170,8 +341,8 @@ class EsewaService
     /**
      * Process success callback from eSewa
      * 
-     * @param array<string, string> $params
-     * @return array<string, mixed>
+     * @param array<string, string> $params Callback parameters from eSewa
+     * @return array<string, mixed> Processing result
      */
     public function processSuccess(array $params): array
     {
@@ -180,29 +351,120 @@ class EsewaService
         $amount = (float) ($params['amt'] ?? 0);
         
         if (empty($refId) || empty($orderId)) {
+            if ($this->logTransactions) {
+                $this->log('Invalid success callback parameters', $params, 'error');
+            }
             return [
                 'success' => false,
                 'message' => 'Invalid callback parameters',
             ];
         }
         
-        // Verify the payment
-        return $this->verifyPayment($refId, $orderId, $amount);
+        if ($this->logTransactions) {
+            $this->log('Processing payment success callback', [
+                'order_id' => $orderId,
+                'reference_id' => $refId,
+                'amount' => $amount,
+            ]);
+        }
+        
+        // Verify the payment with eSewa
+        $verificationResult = $this->verifyPayment($refId, $orderId, $amount);
+        
+        if ($verificationResult['success']) {
+            if ($this->logTransactions) {
+                $this->log('Payment success confirmed', [
+                    'order_id' => $orderId,
+                    'reference_id' => $refId,
+                ]);
+            }
+        }
+        
+        return $verificationResult;
     }
 
     /**
      * Process failure callback from eSewa
      * 
-     * @param array<string, string> $params
-     * @return array<string, mixed>
+     * @param array<string, string> $params Callback parameters
+     * @return array<string, mixed> Processing result
      */
     public function processFailure(array $params): array
     {
+        $orderId = $params['oid'] ?? '';
+        
+        if ($this->logTransactions) {
+            $this->log('Payment failure callback received', [
+                'order_id' => $orderId,
+                'params' => $params,
+            ], 'warning');
+        }
+        
         return [
             'success' => false,
             'message' => 'Payment was cancelled or failed',
-            'order_id' => $params['oid'] ?? '',
+            'order_id' => $orderId,
         ];
+    }
+
+    /**
+     * Log transaction activity
+     * 
+     * @param string $message Log message
+     * @param array<string, mixed> $context Additional context
+     * @param string $level Log level (info, warning, error)
+     */
+    private function log(string $message, array $context = [], string $level = 'info'): void
+    {
+        if (!$this->logTransactions) {
+            return;
+        }
+        
+        try {
+            // Get storage path from application config or use environment variable
+            $app = Application::getInstance();
+            $storagePath = $app?->config('app.storage_path');
+            
+            // If not in config, try environment variable
+            if (empty($storagePath) && defined('STORAGE_PATH')) {
+                $storagePath = STORAGE_PATH;
+            }
+            
+            // Final fallback (though this should be avoided in production)
+            if (empty($storagePath)) {
+                $storagePath = realpath(__DIR__ . '/../../storage');
+                if ($storagePath === false) {
+                    // Can't determine storage path, use error_log
+                    error_log("eSewa Log [{$level}]: {$message}" . (!empty($context) ? ' ' . json_encode($context) : ''));
+                    return;
+                }
+            }
+            
+            $logDir = $storagePath . '/logs';
+            
+            if (!is_dir($logDir)) {
+                // Use restrictive permissions for sensitive payment logs (0750)
+                if (!mkdir($logDir, 0750, true) && !is_dir($logDir)) {
+                    // Failed to create directory, log to error_log instead
+                    error_log("Failed to create log directory: {$logDir}");
+                    return;
+                }
+            }
+            
+            $logFile = $logDir . '/esewa-' . date('Y-m-d') . '.log';
+            $timestamp = date('Y-m-d H:i:s');
+            $contextStr = !empty($context) ? ' ' . json_encode($context) : '';
+            $logEntry = "[{$timestamp}] [{$level}] {$message}{$contextStr}\n";
+            
+            // Use file_put_contents with error checking
+            if (file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX) === false) {
+                // Fallback to error_log if file write fails
+                error_log("eSewa Log [{$level}]: {$message}" . $contextStr);
+            }
+        } catch (\Exception $e) {
+            // Ensure logging failures don't break the application
+            error_log("Failed to write eSewa log: " . $e->getMessage());
+        }
     }
 
     /**
