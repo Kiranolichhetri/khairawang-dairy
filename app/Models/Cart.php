@@ -238,7 +238,7 @@ class Cart extends Model
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'variant_id' => $variantId,
-                'added_at' => date('Y-m-d H:i:s'),
+                'added_at' => new \MongoDB\BSON\UTCDateTime(),
             ];
         }
         
@@ -303,8 +303,8 @@ class Cart extends Model
         $productId = null;
         
         foreach ($items as $index => $item) {
-            // Match by item id or product_id
-            if (($item['id'] ?? '') === $itemId || ($item['product_id'] ?? '') === $itemId) {
+            // Match by item id
+            if (($item['id'] ?? '') === $itemId) {
                 $productId = $item['product_id'];
                 $found = true;
                 
@@ -370,8 +370,8 @@ class Cart extends Model
         $initialCount = count($items);
         
         $items = array_values(array_filter($items, function ($item) use ($itemId) {
-            // Match by item id or product_id
-            return ($item['id'] ?? '') !== $itemId && ($item['product_id'] ?? '') !== $itemId;
+            // Match by item id only
+            return ($item['id'] ?? '') !== $itemId;
         }));
         
         if (count($items) === $initialCount) {
