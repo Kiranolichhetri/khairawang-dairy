@@ -129,10 +129,18 @@ See detailed documentation:
 
 Comprehensive documentation available in the `docs/` directory:
 
+- **CART_FUNCTIONALITY.md** - Complete cart system guide with API reference
 - **ESEWA_INTEGRATION.md** - Complete eSewa payment gateway guide
 - **PAYMENT_API.md** - Payment API endpoints and usage
+- **TROUBLESHOOTING.md** - Comprehensive troubleshooting guide
 - **DEPLOYMENT.md** - Production deployment instructions
-- **TROUBLESHOOTING.md** - Common issues and solutions
+- **MONGODB_CART_VERIFICATION.md** - MongoDB cart verification guide
+
+### Quick Start Guides
+
+- [Cart Setup and Usage](docs/CART_FUNCTIONALITY.md)
+- [eSewa Payment Testing](docs/ESEWA_INTEGRATION.md#sandbox-testing)
+- [Common Issues](docs/TROUBLESHOOTING.md)
 
 ## 🧪 Testing
 

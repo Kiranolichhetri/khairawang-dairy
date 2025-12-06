@@ -30,13 +30,22 @@ class EsewaController
      */
     public function initiate(Request $request): Response
     {
+        // Validate required parameters
         $orderId = $request->input('order_id');
-        $amount = (float) $request->input('amount', 0);
-        $shipping = (float) $request->input('shipping', 0);
+        $amount = $request->input('amount');
+        $shipping = $request->input('shipping', 0);
         
-        if (empty($orderId) || $amount <= 0) {
-            return Response::error('Invalid order or amount', 400);
+        // Input validation
+        if (empty($orderId)) {
+            return Response::error('Order ID is required', 400);
         }
+        
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            return Response::error('Valid amount is required', 400);
+        }
+        
+        $amount = (float) $amount;
+        $shipping = (float) $shipping;
         
         // Verify order exists
         $order = $this->orderService->getOrder($orderId);
@@ -45,21 +54,31 @@ class EsewaController
             return Response::error('Order not found', 404);
         }
         
-        // Generate payment data
-        $paymentData = $this->esewaService->initiatePayment(
-            $orderId,
-            $amount,
-            0,
-            0,
-            $shipping
-        );
+        // Verify order is not already paid
+        if (isset($order->attributes['payment_status']) && $order->attributes['payment_status'] === \App\Enums\PaymentStatus::PAID->value) {
+            return Response::error('Order has already been paid', 400);
+        }
         
-        return Response::json([
-            'success' => true,
-            'payment_url' => $paymentData['payment_url'],
-            'params' => $paymentData['params'],
-            'signature' => $paymentData['signature'],
-        ]);
+        try {
+            // Generate payment data
+            $paymentData = $this->esewaService->initiatePayment(
+                $orderId,
+                $amount,
+                0,
+                0,
+                $shipping
+            );
+            
+            return Response::json([
+                'success' => true,
+                'payment_url' => $paymentData['payment_url'],
+                'params' => $paymentData['params'],
+                'signature' => $paymentData['signature'] ?? '',
+                'test_mode' => $paymentData['test_mode'] ?? false,
+            ]);
+        } catch (\Exception $e) {
+            return Response::error('Failed to initiate payment: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
@@ -67,21 +86,43 @@ class EsewaController
      */
     public function success(Request $request): Response
     {
-        $params = [
-            'refId' => $request->query('refId', ''),
-            'oid' => $request->query('oid', ''),
-            'amt' => $request->query('amt', ''),
-        ];
+        // Extract and validate parameters
+        $refId = $request->query('refId', '');
+        $orderId = $request->query('oid', '');
+        $amount = $request->query('amt', '');
         
-        $result = $this->orderService->handlePaymentSuccess('esewa', $params);
-        
-        if ($result['success']) {
-            // Redirect to confirmation page
-            return Response::redirect('/checkout/success/' . $result['order_number']);
+        // Validate required parameters
+        if (empty($refId)) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Missing reference ID'));
         }
         
-        // Redirect to failure page with error
-        return Response::redirect('/checkout/failed?error=' . urlencode($result['message']));
+        if (empty($orderId)) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Missing order ID'));
+        }
+        
+        if (empty($amount) || !is_numeric($amount)) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Invalid amount'));
+        }
+        
+        $params = [
+            'refId' => $refId,
+            'oid' => $orderId,
+            'amt' => $amount,
+        ];
+        
+        try {
+            $result = $this->orderService->handlePaymentSuccess('esewa', $params);
+            
+            if ($result['success']) {
+                // Redirect to confirmation page
+                return Response::redirect('/checkout/success/' . $result['order_number']);
+            }
+            
+            // Redirect to failure page with error
+            return Response::redirect('/checkout/failed?error=' . urlencode($result['message']));
+        } catch (\Exception $e) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Payment verification failed'));
+        }
     }
 
     /**
@@ -89,17 +130,29 @@ class EsewaController
      */
     public function failure(Request $request): Response
     {
+        // Extract order ID
+        $orderId = $request->query('oid', '');
+        
+        // Validate order ID
+        if (empty($orderId)) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Order not found'));
+        }
+        
         $params = [
-            'oid' => $request->query('oid', ''),
+            'oid' => $orderId,
         ];
         
-        $result = $this->orderService->handlePaymentFailure('esewa', $params);
-        
-        // Redirect to failure page
-        $errorMsg = urlencode($result['message']);
-        $orderNumber = $result['order_number'] ?? '';
-        
-        return Response::redirect("/checkout/failed?order={$orderNumber}&error={$errorMsg}");
+        try {
+            $result = $this->orderService->handlePaymentFailure('esewa', $params);
+            
+            // Redirect to failure page
+            $errorMsg = urlencode($result['message'] ?? 'Payment cancelled');
+            $orderNumber = $result['order_number'] ?? '';
+            
+            return Response::redirect("/checkout/failed?order={$orderNumber}&error={$errorMsg}");
+        } catch (\Exception $e) {
+            return Response::redirect('/checkout/failed?error=' . urlencode('Payment processing failed'));
+        }
     }
 
     /**
@@ -107,29 +160,51 @@ class EsewaController
      */
     public function verify(Request $request): Response
     {
+        // Extract parameters
         $refId = $request->input('reference_id', '');
         $orderId = $request->input('order_id', '');
-        $amount = (float) $request->input('amount', 0);
+        $amount = $request->input('amount', '');
         
-        if (empty($refId) || empty($orderId) || $amount <= 0) {
-            return Response::error('Missing required parameters', 400);
+        // Validate required parameters
+        if (empty($refId)) {
+            return Response::error('Reference ID is required', 400);
         }
         
-        $result = $this->esewaService->verifyPayment($refId, $orderId, $amount);
+        if (empty($orderId)) {
+            return Response::error('Order ID is required', 400);
+        }
         
-        if ($result['success']) {
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            return Response::error('Valid amount is required', 400);
+        }
+        
+        $amount = (float) $amount;
+        
+        try {
+            $result = $this->esewaService->verifyPayment($refId, $orderId, $amount);
+            
+            if ($result['success']) {
+                return Response::json([
+                    'success' => true,
+                    'verified' => true,
+                    'transaction_id' => $result['transaction_id'],
+                    'order_id' => $result['order_id'],
+                    'amount' => $result['amount'],
+                ]);
+            }
+            
             return Response::json([
-                'success' => true,
-                'verified' => true,
-                'transaction_id' => $result['transaction_id'],
-            ]);
+                'success' => false,
+                'verified' => false,
+                'message' => $result['message'],
+            ], 400);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'verified' => false,
+                'message' => 'Verification failed: ' . $e->getMessage(),
+            ], 500);
         }
-        
-        return Response::json([
-            'success' => false,
-            'verified' => false,
-            'message' => $result['message'],
-        ], 400);
     }
 
     /**
@@ -137,26 +212,39 @@ class EsewaController
      */
     public function form(Request $request): Response
     {
+        // Extract and validate parameters
         $orderId = $request->query('order_id', '');
-        $amount = (float) $request->query('amount', 0);
-        $shipping = (float) $request->query('shipping', 0);
+        $amount = $request->query('amount', '');
+        $shipping = $request->query('shipping', 0);
         
-        if (empty($orderId) || $amount <= 0) {
-            return Response::error('Invalid parameters', 400);
+        // Validate required parameters
+        if (empty($orderId)) {
+            return Response::error('Order ID is required', 400);
         }
         
-        $paymentData = $this->esewaService->initiatePayment(
-            $orderId,
-            $amount,
-            0,
-            0,
-            $shipping
-        );
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            return Response::error('Valid amount is required', 400);
+        }
         
-        // Generate auto-submit form
-        $html = $this->generatePaymentForm($paymentData);
+        $amount = (float) $amount;
+        $shipping = (float) $shipping;
         
-        return new Response($html);
+        try {
+            $paymentData = $this->esewaService->initiatePayment(
+                $orderId,
+                $amount,
+                0,
+                0,
+                $shipping
+            );
+            
+            // Generate auto-submit form
+            $html = $this->generatePaymentForm($paymentData);
+            
+            return new Response($html);
+        } catch (\Exception $e) {
+            return Response::error('Failed to generate payment form: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
