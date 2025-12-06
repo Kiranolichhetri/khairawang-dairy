@@ -200,13 +200,11 @@ $router->group(['prefix' => '/checkout'], function(Router $router) {
     $router->get('/success/{orderNumber}', [CheckoutController::class, 'confirm'], 'checkout.success');
     $router->get('/validate-stock', [CheckoutController::class, 'validateStock'], 'checkout.validate');
     $router->get('/failed', function(Request $request) {
-        $error = $request->query('error', 'Payment failed');
-        $orderNumber = $request->query('order', '');
-        return Response::json([
-            'success' => false,
-            'message' => $error,
-            'order_number' => $orderNumber,
-        ]);
+        // Return view for payment failure page
+        $app = \Core\Application::getInstance();
+        $viewPath = $app->config('app.views_path', __DIR__ . '/../resources/views');
+        $view = new \Core\View($viewPath);
+        return new Response($view->render('checkout/failed'));
     }, 'checkout.failed');
 });
 
