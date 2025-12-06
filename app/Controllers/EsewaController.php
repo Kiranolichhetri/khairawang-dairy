@@ -55,7 +55,7 @@ class EsewaController
         }
         
         // Verify order is not already paid
-        if (isset($order->attributes['payment_status']) && $order->attributes['payment_status'] === 'paid') {
+        if (isset($order->attributes['payment_status']) && $order->attributes['payment_status'] === \App\Enums\PaymentStatus::PAID->value) {
             return Response::error('Order has already been paid', 400);
         }
         
@@ -73,8 +73,8 @@ class EsewaController
                 'success' => true,
                 'payment_url' => $paymentData['payment_url'],
                 'params' => $paymentData['params'],
-                'signature' => $paymentData['signature'],
-                'test_mode' => $paymentData['test_mode'],
+                'signature' => $paymentData['signature'] ?? '',
+                'test_mode' => $paymentData['test_mode'] ?? false,
             ]);
         } catch (\Exception $e) {
             return Response::error('Failed to initiate payment: ' . $e->getMessage(), 500);

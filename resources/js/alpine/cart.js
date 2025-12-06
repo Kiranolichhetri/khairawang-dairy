@@ -241,6 +241,9 @@ export function initCartStore() {
           
           if (!response.ok) {
             console.error('Failed to fetch cart from server');
+            if (Alpine.store('toast')) {
+              Alpine.store('toast').show('Failed to refresh cart', 'error');
+            }
             return;
           }
           
@@ -259,6 +262,9 @@ export function initCartStore() {
           }
         } catch (error) {
           console.error('Error refreshing cart:', error);
+          if (Alpine.store('toast')) {
+            Alpine.store('toast').show('Failed to refresh cart', 'error');
+          }
         }
       },
 
