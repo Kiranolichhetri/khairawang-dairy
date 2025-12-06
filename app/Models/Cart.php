@@ -39,7 +39,14 @@ class Cart extends Model
     {
         if (static::isMongoDb()) {
             // For MongoDB, items are embedded in the cart document
-            return $this->attributes['items'] ?? [];
+            // Normalize item_id to id for consistency with SQL
+            $items = $this->attributes['items'] ?? [];
+            return array_map(function($item) {
+                if (isset($item['item_id']) && !isset($item['id'])) {
+                    $item['id'] = $item['item_id'];
+                }
+                return $item;
+            }, $items);
         }
         
         return self::db()->table('cart_items')
@@ -110,7 +117,7 @@ class Cart extends Model
             
             // Merge cart item with product details
             $result[] = [
-                'id' => $item['id'] ?? $productId,
+                'id' => $item['item_id'] ?? $item['id'] ?? $productId,
                 'product_id' => $productId,
                 'variant_id' => $item['variant_id'] ?? null,
                 'quantity' => $item['quantity'] ?? 1,
@@ -233,8 +240,9 @@ class Cart extends Model
         
         if (!$found) {
             // Add new item with unique ID
+            // Use 'item_id' for MongoDB to match MongoCart convention
             $items[] = [
-                'id' => bin2hex(random_bytes(12)),
+                'item_id' => bin2hex(random_bytes(12)),
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'variant_id' => $variantId,
@@ -303,8 +311,8 @@ class Cart extends Model
         $productId = null;
         
         foreach ($items as $index => $item) {
-            // Match by item id
-            if (($item['id'] ?? '') === $itemId) {
+            // Match by item id (use item_id for MongoDB consistency)
+            if (($item['item_id'] ?? $item['id'] ?? '') === $itemId) {
                 $productId = $item['product_id'];
                 $found = true;
                 
@@ -370,8 +378,8 @@ class Cart extends Model
         $initialCount = count($items);
         
         $items = array_values(array_filter($items, function ($item) use ($itemId) {
-            // Match by item id only
-            return ($item['id'] ?? '') !== $itemId;
+            // Match by item id only (use item_id for MongoDB consistency)
+            return ($item['item_id'] ?? $item['id'] ?? '') !== $itemId;
         }));
         
         if (count($items) === $initialCount) {
