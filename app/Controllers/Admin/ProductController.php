@@ -43,7 +43,19 @@ class ProductController
         $total = $query->count();
 
         $offset = ($page - 1) * $perPage;
-        $productsData = $query->limit($perPage)->offset($offset)->get();
+        
+        // Explicitly select all columns to ensure ID is included
+        $productsData = $query
+            ->select([
+                'id', 'category_id', 'name_en', 'name_ne', 'slug', 
+                'description_en', 'short_description', 'price', 'sale_price',
+                'sku', 'stock', 'low_stock_threshold', 'weight', 'images',
+                'featured', 'status', 'seo_title', 'seo_description',
+                'created_at', 'updated_at', 'deleted_at'
+            ])
+            ->limit($perPage)
+            ->offset($offset)
+            ->get();
 
         foreach ($productsData as $row) {
             $products[] = $this->formatProductArray(is_array($row) ? $row : $row->toArray());
