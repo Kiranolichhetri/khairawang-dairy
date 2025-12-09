@@ -71,3 +71,9 @@ check_*.php
 fix_*.php
 test_*.php
 debug_*.php
+
+# Temporary documentation (keep docs in /docs directory)
+*_FIX.md
+*_FIXES*.md
+*_COMPLETE.md
+*VERIFICATION*.md
