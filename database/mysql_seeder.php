@@ -119,7 +119,9 @@ try {
     echo "  Email: admin@khairawangdairy.com\n";
     echo "  Password: admin123\n\n";
 } catch (Throwable $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     fwrite(STDERR, "\n❌ Seeder failed: " . $e->getMessage() . "\n");
     exit(1);
 }
