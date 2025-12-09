@@ -50,6 +50,16 @@ export function initCartStore() {
 
         this.save();
         this.showNotification(`${product.name} added to cart`);
+        
+        // Open cart drawer to show the added item
+        this.open();
+        
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          if (this.isOpen) {
+            this.close();
+          }
+        }, 3000);
       },
 
       /**
@@ -312,6 +322,16 @@ export function initCartStore() {
             // Refresh cart from server
             await this.refresh();
             this.showNotification(data.message || 'Item added to cart');
+            
+            // Open cart drawer to show the added item
+            this.open();
+            
+            // Auto-close after 3 seconds
+            setTimeout(() => {
+              if (this.isOpen) {
+                this.close();
+              }
+            }, 3000);
           } else {
             if (Alpine.store('toast')) {
               Alpine.store('toast').show(data.message || 'Failed to add item', 'error');
