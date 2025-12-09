@@ -20,6 +20,30 @@ export function initCartStore() {
     const savedItems = getItem(CART_STORAGE_KEY, []);
     
     Alpine.store('cart', {
+            /**
+             * Validate cart items against server stock before checkout
+             * @returns {Promise<{valid: boolean, unavailable: Array}>}
+             */
+            async validateBeforeCheckout() {
+              try {
+                const response = await fetch('/api/v1/cart/validate', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                  },
+                  body: JSON.stringify({ items: this.items.map(item => ({ product_id: item.product_id || item.id, quantity: item.quantity })) })
+                });
+                const data = await response.json();
+                if (data.success) {
+                  return { valid: true, unavailable: [] };
+                } else {
+                  return { valid: false, unavailable: data.errors || [] };
+                }
+              } catch (error) {
+                return { valid: false, unavailable: [{ message: 'Validation failed. Please try again.' }] };
+              }
+            },
       items: savedItems,
       isOpen: false,
       isLoading: false,

@@ -33,6 +33,13 @@
       </span>
     </div>
 
+    <!-- Stock Status -->
+    <div class="absolute top-4 right-4">
+      <span class="badge" :class="productGrid.isInStock(product) ? 'badge-success' : 'badge-error'">
+        <span x-text="productGrid.isInStock(product) ? 'In Stock' : 'Out of Stock'"></span>
+      </span>
+    </div>
+
     <!-- Quick Actions Overlay -->
     <div class="absolute inset-0 bg-dark-brown bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
       <!-- Quick View -->
@@ -47,7 +54,8 @@
       
       <!-- Add to Cart -->
       <button @click.prevent="addToCart()"
-              class="w-10 h-10 bg-accent-orange rounded-full flex items-center justify-center text-white hover:bg-dark-brown transition-colors transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75"
+              :disabled="!productGrid.isInStock(product)"
+              class="w-10 h-10 bg-accent-orange rounded-full flex items-center justify-center text-white hover:bg-dark-brown transition-colors transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Add to cart">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>

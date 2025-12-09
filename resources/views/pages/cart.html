@@ -157,9 +157,67 @@
             </div>
 
             <a href="/checkout" class="btn btn-primary w-full justify-center">
-              Proceed to Checkout
-              <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-            </a>
+              <button type="button" class="btn btn-primary w-full justify-center" id="proceedCheckoutBtn">
+                Proceed to Checkout
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+              </button>
+              <div id="cartValidationError" class="mt-4 text-sm text-error-red font-semibold" style="display:none;"></div>
+                            <button type="button" id="removeUnavailableBtn" class="mt-2 btn btn-error w-full justify-center" style="display:none;">Remove Unavailable Items</button>
+              <script type="module">
+                const btn = document.getElementById('proceedCheckoutBtn');
+                const errorDiv = document.getElementById('cartValidationError');
+                const removeBtn = document.getElementById('removeUnavailableBtn');
+                btn.addEventListener('click', async () => {
+                  errorDiv.style.display = 'none';
+                  removeBtn.style.display = 'none';
+                  btn.disabled = true;
+                  btn.textContent = 'Validating...';
+                  if (window.Alpine && Alpine.store('cart') && Alpine.store('cart').validateBeforeCheckout) {
+                    // Always refresh cart from server before validating
+                    if (Alpine.store('cart').refresh) {
+                      await Alpine.store('cart').refresh();
+                      console.log('[Cart Debug] Cart after refresh:', Alpine.store('cart').items);
+                    }
+                    let result = await Alpine.store('cart').validateBeforeCheckout();
+                    console.log('[Cart Debug] Validation result:', result);
+                    if (!result.valid && result.unavailable && result.unavailable.length) {
+                      // Automatically remove unavailable items
+                      const cart = Alpine.store('cart');
+                      result.unavailable.forEach(e => {
+                        const idx = cart.items.findIndex(i => (i.product_id || i.id) == e.product_id);
+                        console.log('[Cart Debug] Removing item:', e.product_id, 'at index', idx);
+                        if (idx !== -1) cart.remove(idx);
+                      });
+                      // Refresh cart again after removal
+                      if (cart.refresh) {
+                        await cart.refresh();
+                        console.log('[Cart Debug] Cart after removal and refresh:', cart.items);
+                      }
+                      // Revalidate after removal
+                      result = await Alpine.store('cart').validateBeforeCheckout();
+                      console.log('[Cart Debug] Validation result after removal:', result);
+                    }
+                    if (result.valid) {
+                      window.location.href = '/checkout';
+                    } else {
+                      let msg = 'Some items are no longer available:';
+                      if (result.unavailable && result.unavailable.length) {
+                        msg += '<ul style="margin-top:8px">' + result.unavailable.map(e => `<li>${e.name}: ${e.message}</li>`).join('') + '</ul>';
+                        btn.disabled = true;
+                      } else {
+                        btn.disabled = false;
+                      }
+                      errorDiv.innerHTML = msg;
+                      errorDiv.style.display = 'block';
+                    }
+                  } else {
+                    errorDiv.textContent = 'Cart validation is not available.';
+                    errorDiv.style.display = 'block';
+                    btn.disabled = false;
+                  }
+                  btn.textContent = 'Proceed to Checkout';
+                });
+              </script>
 
             <div class="mt-6 pt-6 border-t border-gray-100">
               <p class="text-xs text-gray-500 text-center mb-4">Secure Checkout</p>

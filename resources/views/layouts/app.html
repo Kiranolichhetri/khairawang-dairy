@@ -24,8 +24,10 @@
   <!-- Styles -->
   <link rel="stylesheet" href="/resources/css/app.css">
   
-  <!-- Alpine.js and App JS -->
-  <script type="module" src="/resources/js/app.js"></script>
+  <!-- Alpine.js CDN Fallback -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <!-- Built JS from Vite (dist) -->
+  <script type="module" src="/assets/main-DoD2sZI_.js"></script>
   
   <title>{{title}} - KHAIRAWANG DAIRY</title>
   
@@ -33,7 +35,13 @@
     [x-cloak] { display: none !important; }
   </style>
 </head>
-<body class="font-body text-dark-brown bg-cream antialiased" x-data>
+<body class="font-body text-dark-brown bg-cream antialiased" x-data x-init="
+  if ($store && $store.cart) {
+    console.log('Alpine cart count:', $store.cart.count);
+  } else {
+    document.body.insertAdjacentHTML('afterbegin', '<div style=\'color:red;position:fixed;top:0;left:0;z-index:9999;background:#fff;padding:10px;border:2px solid red;\'>Alpine.js cart store not available</div>');
+  }
+">
   <!-- Skip to main content for accessibility -->
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent-orange text-white px-4 py-2 rounded-lg z-50">
     Skip to main content
@@ -90,6 +98,8 @@
             <span x-show="$store.cart.count > 0" x-text="$store.cart.count" x-transition
                   class="absolute -top-1 -right-1 bg-accent-orange text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"></span>
           </button>
+          <!-- DEBUG: Show live cart count -->
+          <span class="ml-2 text-xs text-red-600" x-text="$store.cart.count"></span>
 
           <!-- Shop Now Button (Desktop) -->
           <a href="#products" @click.prevent="scrollToSection($event, 'products')"

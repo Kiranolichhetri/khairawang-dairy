@@ -1,3 +1,5 @@
+// TEST: Show a visible message to confirm JS is loaded
+document.body.insertAdjacentHTML('afterbegin', '<div style="color:green;position:fixed;top:40px;left:0;z-index:9999;background:#fff;padding:10px;border:2px solid green;">Main JS loaded</div>');
 /**
  * KHAIRAWANG DAIRY - Main JavaScript Entry Point
  * Initializes Alpine.js and all components
