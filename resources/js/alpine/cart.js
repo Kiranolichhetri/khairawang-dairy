@@ -30,8 +30,9 @@ export function initCartStore() {
        * @param {number} qty - Quantity to add
        */
       add(product, qty = 1) {
+        const productId = product.product_id || product.id;
         const existingIndex = this.items.findIndex(
-          item => item.id === product.id
+          item => (item.product_id || item.id) === productId
         );
 
         if (existingIndex > -1) {
@@ -39,6 +40,7 @@ export function initCartStore() {
         } else {
           this.items.push({
             id: product.id,
+            product_id: productId,
             name: product.name,
             price: product.price,
             image: product.image,

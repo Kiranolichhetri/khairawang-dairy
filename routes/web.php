@@ -90,6 +90,14 @@ $router->delete('/cart/clear', [CartController::class, 'clear'], 'cart.clear');
 $router->post('/cart/sync', [CartController::class, 'sync'], 'cart.sync');
 $router->get('/cart/count', [CartController::class, 'count'], 'cart.count');
 
+// API Cart Routes (for AJAX)
+$router->get('/api/v1/cart', [CartController::class, 'apiIndex'], 'api.cart.index');
+$router->post('/api/v1/cart/items', [CartController::class, 'add'], 'api.cart.add');
+$router->put('/api/v1/cart/items/{id}', [CartController::class, 'update'], 'api.cart.update');
+$router->delete('/api/v1/cart/items/{id}', [CartController::class, 'remove'], 'api.cart.remove');
+$router->delete('/api/v1/cart', [CartController::class, 'clear'], 'api.cart.clear');
+$router->get('/api/v1/cart/count', [CartController::class, 'count'], 'api.cart.count');
+
 // Coupon Routes (Cart)
 $router->post('/cart/coupon/apply', [CouponController::class, 'apply'], 'cart.coupon.apply');
 $router->delete('/cart/coupon/remove', [CouponController::class, 'remove'], 'cart.coupon.remove');

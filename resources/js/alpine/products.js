@@ -20,14 +20,14 @@ export function initProducts() {
       viewMode: 'grid', // 'grid' or 'list'
       isLoading: false,
 
-      // Sample products for demo
+      // Sample products for demo (using actual database product IDs)
       sampleProducts: [
-        { id: 1, name: 'Fresh Farm Milk', price: 120, oldPrice: 150, category: 'Milk', badge: 'Fresh', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600' },
-        { id: 2, name: 'Organic Yogurt', price: 85, category: 'Yogurt', badge: 'Popular', image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600' },
-        { id: 3, name: 'Artisan Cheese', price: 350, category: 'Cheese', badge: 'New', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=600' },
-        { id: 4, name: 'Fresh Butter', price: 180, category: 'Butter', image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600' },
-        { id: 5, name: 'Fresh Paneer', price: 220, category: 'Paneer', badge: 'Bestseller', image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600' },
-        { id: 6, name: 'Fresh Cream', price: 95, category: 'Cream', image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600' }
+        { id: 12, product_id: 12, name: 'Fresh Farm Milk', price: 120, oldPrice: 150, category: 'Milk', badge: 'Fresh', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600' },
+        { id: 13, product_id: 13, name: 'Organic Yogurt', price: 85, category: 'Yogurt', badge: 'Popular', image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600' },
+        { id: 14, product_id: 14, name: 'Brown Eggs', price: 350, category: 'Eggs', badge: 'New', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=600' },
+        { id: 1, product_id: 1, name: 'Fresh Milk', price: 180, category: 'Milk', image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600' },
+        { id: 2, product_id: 2, name: 'EGG', price: 220, category: 'Eggs', badge: 'Bestseller', image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600' },
+        { id: 12, product_id: 12, name: 'Fresh Milk 500ml', price: 95, category: 'Milk', image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600' }
       ],
 
       init() {
