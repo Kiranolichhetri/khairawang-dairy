@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    "default" => "mongodb",
+    "default" => "mysql",
 
     "connections" => [
         "mysql" => [
