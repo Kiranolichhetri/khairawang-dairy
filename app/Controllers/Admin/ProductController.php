@@ -24,7 +24,8 @@ class ProductController
         $products = [];
         $total = 0;
 
-        $query = Product::withTrashed();
+        // Use query() instead of withTrashed() to exclude soft-deleted products
+        $query = Product::query();
 
         if (!empty($search)) {
             $searchTerm = '%' . $search . '%';
