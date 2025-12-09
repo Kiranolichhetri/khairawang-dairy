@@ -46,18 +46,25 @@ class ProfileService
         $user = User::find($userId);
         
         if ($user === null) {
+            error_log("ProfileService: User not found for ID: {$userId}");
+            return null;
+        }
+        
+        // Additional safety check for attributes
+        if (!isset($user->attributes) || !is_array($user->attributes)) {
+            error_log("ProfileService: User found but attributes are invalid for ID: {$userId}");
             return null;
         }
         
         return [
             'id' => $user->getKey(),
-            'name' => $user->attributes['name'],
-            'email' => $user->attributes['email'],
-            'phone' => $user->attributes['phone'],
+            'name' => $user->attributes['name'] ?? '',
+            'email' => $user->attributes['email'] ?? '',
+            'phone' => $user->attributes['phone'] ?? '',
             'avatar' => $user->getAvatarUrl(),
             'email_verified' => $user->isEmailVerified(),
-            'created_at' => $user->attributes['created_at'],
-            'updated_at' => $user->attributes['updated_at'],
+            'created_at' => $user->attributes['created_at'] ?? null,
+            'updated_at' => $user->attributes['updated_at'] ?? null,
         ];
     }
 

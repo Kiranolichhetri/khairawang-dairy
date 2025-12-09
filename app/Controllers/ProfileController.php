@@ -46,6 +46,14 @@ class ProfileController
         }
         
         $profile = $this->profileService->getProfile($userId);
+        
+        if ($profile === null) {
+            // User not found - session is invalid
+            $session = Application::getInstance()?->session();
+            $session?->destroy();
+            return Response::redirect('/login?error=session_expired');
+        }
+        
         $stats = $this->profileService->getAccountStats($userId);
         
         if ($request->expectsJson()) {

@@ -260,6 +260,11 @@ class Router
         $method = $request->method();
         $uri = $request->path();
 
+        // Remove trailing slash (except for root '/')
+        if ($uri !== '/' && str_ends_with($uri, '/')) {
+            $uri = rtrim($uri, '/');
+        }
+
         // Handle method override for forms (only allow specific methods)
         if ($method === 'POST' && $request->input('_method')) {
             $overrideMethod = strtoupper($request->input('_method'));

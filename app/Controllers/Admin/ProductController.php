@@ -140,8 +140,14 @@ class ProductController
             }
         }
 
+        // Ensure we have an ID - check multiple possible sources
+        $productId = $product['_id'] ?? $product['id'] ?? null;
+        if ($productId === null) {
+            error_log("WARNING: Product has no ID: " . json_encode($product));
+        }
+
         return [
-            'id'                  => (string) ($product['_id'] ?? $product['id'] ?? ''),
+            'id'                  => (string) ($productId ?? ''),
             'name'                => $product['name_en'] ?? '',
             'name_ne'             => $product['name_ne'] ?? '',
             'slug'                => $product['slug'] ?? '',
