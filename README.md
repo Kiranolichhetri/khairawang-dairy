@@ -6,7 +6,7 @@ A modern, production-ready e-commerce platform for premium dairy products with i
 
 - **Frontend**: Tailwind CSS 3.x, Alpine.js 3.x, Vanilla JavaScript ES Modules
 - **Backend**: PHP 8.2+ with custom MVC Framework
-- **Database**: MySQL 8+ / MongoDB 6.0+
+- **Database**: MySQL 8+
 - **Payment**: eSewa Integration (Nepal) with sandbox support
 
 ## 🎨 Design System
@@ -58,8 +58,7 @@ A modern, production-ready e-commerce platform for premium dairy products with i
 - PHP 8.2+
 - Composer 2.x
 - Node.js 18+
-- MongoDB 6.0+ (for cart/sessions)
-- MySQL 8+ (alternative)
+- MySQL 8+
 
 ### Quick Start
 
@@ -81,8 +80,8 @@ npm run build
 cp .env.example .env
 nano .env
 
-# Set up database (if needed)
-php artisan migrate --seed
+# Set up database schema & seed defaults
+php database/mysql_seeder.php
 ```
 
 ### Environment Configuration
