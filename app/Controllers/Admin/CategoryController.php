@@ -97,10 +97,9 @@ class CategoryController
             return Response::redirect('/admin/categories/create');
         }
 
-        // Handle parent_id for MongoDB (string) vs MySQL (int)
         $parentId = $request->input('parent_id') ?: null;
         $app = Application::getInstance();
-        if ($parentId !== null && !$app?->isMongoDbDefault()) {
+        if ($parentId !== null) {
             $parentId = (int) $parentId;
         }
 
@@ -204,8 +203,7 @@ class CategoryController
             return Response::redirect('/admin/categories/' . $id . '/edit');
         }
 
-        // Handle parent_id for MongoDB (string) vs MySQL (int)
-        if ($parentId !== null && !$app?->isMongoDbDefault()) {
+        if ($parentId !== null) {
             $parentId = (int) $parentId;
         }
 

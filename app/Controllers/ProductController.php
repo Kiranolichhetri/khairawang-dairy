@@ -23,46 +23,25 @@ class ProductController
     /**
      * List all products with pagination, filters, search
      * 
-     * Renders the products listing HTML view.
-     * Products are loaded from MongoDB directly (similar to HomeController).
+     * Renders the products listing HTML view using MySQL data.
      */
     public function index(Request $request): Response
     {
-        $app = \Core\Application::getInstance();
+        $limit = min(50, max(1, (int) $request->query('per_page', 12)));
+        
+        $productsData = Product::query()
+            ->where('status', ProductStatus::PUBLISHED->value)
+            ->orderBy('created_at', 'DESC')
+            ->select('*')
+            ->limit($limit)
+            ->get();
+        
         $products = [];
-        
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            
-            // Get products from MongoDB
-            // Note: Only filter by status. Products with status='published' should be visible.
-            // We don't filter by deleted_at because MongoDB's {deleted_at: null} only matches
-            // documents where the field EXISTS and equals null, not documents where the field is missing.
-            $productsData = $mongo->find('products', [
-                'status' => 'published',
-            ], [
-                'sort' => ['created_at' => -1],
-            ]);
-            
-            foreach ($productsData as $product) {
-                $products[] = $this->formatProductFromMongoRow($product);
-            }
+        foreach ($productsData as $row) {
+            $products[] = $this->formatProductFromRow($row);
         }
         
-        // Get categories for filter
-        $categories = [];
-        if ($app?->isMongoDbDefault()) {
-            $categoriesData = $app->mongo()->find('categories', [], [
-                'sort' => ['display_order' => 1],
-            ]);
-            foreach ($categoriesData as $cat) {
-                $categories[] = [
-                    'id' => (string) ($cat['_id'] ?? ''),
-                    'name' => $cat['name_en'] ?? '',
-                    'slug' => $cat['slug'] ?? '',
-                ];
-            }
-        }
+        $categories = $this->getActiveCategories();
         
         return Response::view('products.index', [
             'title' => 'Our Products',
@@ -70,70 +49,6 @@ class ProductController
             'products' => $products,
             'categories' => $categories,
         ]);
-    }
-
-    /**
-     * Format product from MongoDB document
-     * 
-     * @param array<string, mixed> $product
-     * @return array<string, mixed>
-     */
-    private function formatProductFromMongoRow(array $product): array
-    {
-        $images = $product['images'] ?? [];
-        $firstImage = '/assets/images/placeholder.png';
-        if (!empty($images) && is_array($images)) {
-            $img = $images[0];
-            // Validate image path to prevent path traversal and other attacks
-            if (is_string($img) && !str_contains($img, '..') && !str_contains($img, "\0")) {
-                if (str_starts_with($img, '/uploads/')) {
-                    // Trusted internal path - allow as-is
-                    $firstImage = $img;
-                } elseif (str_starts_with($img, 'https://')) {
-                    // Only allow HTTPS for external images
-                    $firstImage = $img;
-                } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
-                    // Simple filename (no path separators) - sanitize and use
-                    $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
-                    if (!empty($sanitizedImg)) {
-                        $firstImage = '/uploads/products/' . $sanitizedImg;
-                    }
-                }
-            }
-        }
-        
-        $price = (float) ($product['price'] ?? 0);
-        $salePrice = isset($product['sale_price']) && $product['sale_price'] > 0 ? (float) $product['sale_price'] : null;
-        $currentPrice = $salePrice ?? $price;
-        $isOnSale = $salePrice !== null && $salePrice < $price;
-        $discountPercentage = $isOnSale && $price > 0 ? (int) round((($price - $salePrice) / $price) * 100) : 0;
-        $stock = (int) ($product['stock'] ?? 0);
-        
-        // Stock status
-        $stockStatus = 'In Stock';
-        if ($stock <= 0) {
-            $stockStatus = 'Out of Stock';
-        } elseif ($stock <= 10) {
-            $stockStatus = 'Low Stock';
-        }
-        
-        return [
-            'id' => (string) ($product['_id'] ?? $product['id'] ?? ''),
-            'name' => $product['name_en'] ?? '',
-            'name_ne' => $product['name_ne'] ?? '',
-            'slug' => $product['slug'] ?? '',
-            'short_description' => $product['short_description'] ?? '',
-            'price' => $price,
-            'sale_price' => $salePrice,
-            'current_price' => $currentPrice,
-            'is_on_sale' => $isOnSale,
-            'discount_percentage' => $discountPercentage,
-            'stock' => $stock,
-            'in_stock' => $stock > 0,
-            'stock_status' => $stockStatus,
-            'featured' => (bool) ($product['featured'] ?? false),
-            'image' => $firstImage,
-        ];
     }
 
     /**
@@ -265,80 +180,6 @@ class ProductController
      */
     public function apiShow(Request $request, string $slug): Response
     {
-        $app = \Core\Application::getInstance();
-        
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            
-            // Find product by slug in MongoDB
-            $productData = $mongo->findOne('products', [
-                'slug' => $slug,
-                'status' => 'published',
-            ]);
-            
-            if (!$productData) {
-                return Response::error('Product not found', 404);
-            }
-            
-            $product = $this->formatProductFromMongoRow((array) $productData);
-            
-            // Add full description
-            $product['description'] = $productData['description_en'] ?? '';
-            $product['sku'] = $productData['sku'] ?? '';
-            $product['weight'] = $productData['weight'] ?? null;
-            $product['images'] = $this->formatImages($productData['images'] ?? []);
-            
-            // Get category
-            $category = null;
-            if (!empty($productData['category_id'])) {
-                $categoryId = $productData['category_id'];
-                // Validate ObjectId format: 24 hex characters
-                $isValidObjectId = is_string($categoryId) 
-                    && strlen($categoryId) === 24 
-                    && ctype_xdigit($categoryId);
-                
-                $catData = $mongo->findOne('categories', [
-                    '_id' => $isValidObjectId
-                        ? new \MongoDB\BSON\ObjectId($categoryId)
-                        : $categoryId
-                ]);
-                if ($catData) {
-                    $category = [
-                        'id' => (string) ($catData['_id'] ?? ''),
-                        'name' => $catData['name_en'] ?? '',
-                        'slug' => $catData['slug'] ?? '',
-                    ];
-                }
-            }
-            
-            // Get related products
-            $relatedProducts = [];
-            if (!empty($productData['category_id'])) {
-                $relatedData = $mongo->find('products', [
-                    'category_id' => $productData['category_id'],
-                    '_id' => ['$ne' => $productData['_id']],
-                    'status' => 'published',
-                ], [
-                    'limit' => 4,
-                ]);
-                
-                foreach ($relatedData as $related) {
-                    $relatedProducts[] = $this->formatProductFromMongoRow((array) $related);
-                }
-            }
-            
-            return Response::json([
-                'success' => true,
-                'data' => [
-                    'product' => $product,
-                    'category' => $category,
-                    'variants' => [],
-                    'related_products' => $relatedProducts,
-                ],
-            ]);
-        }
-        
-        // MySQL fallback - existing code
         $product = Product::findBySlug($slug);
         
         if ($product === null || !$product->isPublished()) {
@@ -376,54 +217,6 @@ class ProductController
                 'related_products' => $relatedProducts,
             ],
         ]);
-    }
-    
-    /**
-     * Format images array for API response
-     * 
-     * @param array<mixed> $images
-     * @return array<string>
-     */
-    private function formatImages(array $images): array
-    {
-        if (empty($images)) {
-            return [self::PLACEHOLDER_IMAGE];
-        }
-        
-        $formatted = [];
-        foreach ($images as $img) {
-            if (!is_string($img)) {
-                $formatted[] = self::PLACEHOLDER_IMAGE;
-                continue;
-            }
-            
-            // Validate image path to prevent path traversal and other attacks
-            if (str_contains($img, '..') || str_contains($img, "\0")) {
-                $formatted[] = self::PLACEHOLDER_IMAGE;
-                continue;
-            }
-            
-            if (str_starts_with($img, '/uploads/')) {
-                // Trusted internal path - allow as-is
-                $formatted[] = $img;
-            } elseif (str_starts_with($img, 'https://')) {
-                // Only allow HTTPS for external images
-                $formatted[] = $img;
-            } elseif (!str_contains($img, '/') && !str_contains($img, '\\')) {
-                // Simple filename (no path separators) - sanitize and validate extension
-                $sanitizedImg = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $img);
-                // Ensure single extension and valid image extension
-                if (!empty($sanitizedImg) && preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $sanitizedImg)) {
-                    $formatted[] = '/uploads/products/' . $sanitizedImg;
-                } else {
-                    $formatted[] = self::PLACEHOLDER_IMAGE;
-                }
-            } else {
-                $formatted[] = self::PLACEHOLDER_IMAGE;
-            }
-        }
-        
-        return empty($formatted) ? [self::PLACEHOLDER_IMAGE] : $formatted;
     }
 
     /**

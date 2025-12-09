@@ -21,63 +21,32 @@ class ProductController
         $status = $request->query('status');
         $categoryId = $request->query('category_id');
 
-        $app = Application::getInstance();
         $products = [];
         $total = 0;
 
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $filter = [];
+        $query = Product::withTrashed();
 
-            if (!empty($search)) {
-                $filter['name_en'] = ['$regex' => $search, '$options' => 'i'];
-            }
+        if (!empty($search)) {
+            $searchTerm = '%' . $search . '%';
+            $query->where('name_en', 'LIKE', $searchTerm);
+        }
 
-            if ($status && in_array($status, ['draft', 'published', 'archived'])) {
-                $filter['status'] = $status;
-            }
+        if ($status && in_array($status, ['draft', 'published', 'archived'])) {
+            $query->where('status', $status);
+        }
 
-            if ($categoryId) {
-                $filter['category_id'] = $categoryId;
-            }
+        if ($categoryId) {
+            $query->where('category_id', (int) $categoryId);
+        }
 
-            $total = $mongo->count('products', $filter);
-            $offset = ($page - 1) * $perPage;
+        $query->orderBy('created_at', 'DESC');
+        $total = $query->count();
 
-            $productsData = $mongo->find('products', $filter, [
-                'sort'  => ['created_at' => -1],
-                'skip'  => $offset,
-                'limit' => $perPage,
-            ]);
+        $offset = ($page - 1) * $perPage;
+        $productsData = $query->limit($perPage)->offset($offset)->get();
 
-            foreach ($productsData as $row) {
-                $products[] = $this->formatProductArray($row);
-            }
-        } else {
-            $query = Product::withTrashed();
-
-            if (!empty($search)) {
-                $searchTerm = '%' . $search . '%';
-                $query->where('name_en', 'LIKE', $searchTerm);
-            }
-
-            if ($status && in_array($status, ['draft', 'published', 'archived'])) {
-                $query->where('status', $status);
-            }
-
-            if ($categoryId) {
-                $query->where('category_id', (int) $categoryId);
-            }
-
-            $query->orderBy('created_at', 'DESC');
-            $total = $query->count();
-
-            $offset = ($page - 1) * $perPage;
-            $productsData = $query->limit($perPage)->offset($offset)->get();
-
-            foreach ($productsData as $row) {
-                $products[] = $this->formatProductArray(is_array($row) ? $row : $row->toArray());
-            }
+        foreach ($productsData as $row) {
+            $products[] = $this->formatProductArray(is_array($row) ? $row : $row->toArray());
         }
 
         $categories = Category::all();
@@ -131,38 +100,22 @@ class ProductController
      */
     private function loadCategories(): array
     {
-        $app = Application::getInstance();
         $categories = [];
+        $categoriesData = Category::all();
 
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $categoriesData = $mongo->find('categories', [], [
-                'sort' => ['display_order' => 1],
-            ]);
-
-            foreach ($categoriesData as $cat) {
+        foreach ($categoriesData as $cat) {
+            if (is_object($cat)) {
                 $categories[] = [
-                    'id' => (string) ($cat['_id'] ?? ''),
+                    'id' => (string) $cat->getKey(),
+                    'name_en' => $cat->attributes['name_en'] ?? '',
+                    'slug' => $cat->attributes['slug'] ?? '',
+                ];
+            } else {
+                $categories[] = [
+                    'id' => (string) ($cat['id'] ?? ''),
                     'name_en' => $cat['name_en'] ?? '',
                     'slug' => $cat['slug'] ?? '',
                 ];
-            }
-        } else {
-            $categoriesData = Category::all();
-            foreach ($categoriesData as $cat) {
-                if (is_object($cat)) {
-                    $categories[] = [
-                        'id' => (string) $cat->getKey(),
-                        'name_en' => $cat->attributes['name_en'] ?? '',
-                        'slug' => $cat->attributes['slug'] ?? '',
-                    ];
-                } else {
-                    $categories[] = [
-                        'id' => (string) ($cat['id'] ?? ''),
-                        'name_en' => $cat['name_en'] ?? '',
-                        'slug' => $cat['slug'] ?? '',
-                    ];
-                }
             }
         }
 
@@ -276,16 +229,7 @@ class ProductController
         error_log("Product data: " . json_encode($data));
 
         try {
-            if ($app?->isMongoDbDefault()) {
-                error_log("Using MongoDB...");
-                $mongo = $app->mongo();
-                $insertedId = $mongo->insertOne('products', $data);
-                error_log("Product inserted with ID: " . $insertedId);
-            } else {
-                error_log("Using MySQL...");
-                Product::create($data);
-            }
-
+            Product::create($data);
             $session?->success('Product created successfully!');
             error_log("SUCCESS - Redirecting to products list");
             return Response::redirect('/admin/products');
@@ -298,22 +242,11 @@ class ProductController
 
     public function edit(Request $request, string $id): Response
     {
-        $app = Application::getInstance();
-
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $product = $mongo->findOne('products', ['_id' => new \MongoDB\BSON\ObjectId($id)]);
-            if (!$product) {
-                return Response::redirect('/admin/products');
-            }
-            $product = $this->formatProductArray((array) $product);
-        } else {
-            $product = Product::find($id);
-            if (!$product) {
-                return Response::redirect('/admin/products');
-            }
-            $product = $this->formatProductArray($product->toArray());
+        $product = Product::find($id);
+        if (!$product) {
+            return Response::redirect('/admin/products');
         }
+        $product = $this->formatProductArray($product->toArray());
 
         return Response::view('admin.products.edit', [
             'title'      => 'Edit Product',
@@ -368,14 +301,9 @@ class ProductController
             $data['images'] = $images;
         }
 
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $mongo->updateOne('products', ['_id' => new \MongoDB\BSON\ObjectId($id)], $data);
-        } else {
-            $product = Product::find($id);
-            if ($product) {
-                $product->update($data);
-            }
+        $product = Product::find($id);
+        if ($product) {
+            $product->update($data);
         }
 
         $session?->success('Product updated successfully!');
@@ -387,14 +315,9 @@ class ProductController
         $app = Application::getInstance();
         $session = $app?->session();
 
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $mongo->deleteOne('products', ['_id' => new \MongoDB\BSON\ObjectId($id)]);
-        } else {
-            $product = Product::find($id);
-            if ($product) {
-                $product->delete();
-            }
+        $product = Product::find($id);
+        if ($product) {
+            $product->delete();
         }
 
         $session?->success('Product deleted successfully!');
@@ -408,21 +331,6 @@ class ProductController
 
     public function toggleStatus(Request $request, string $id): Response
     {
-        $app = Application::getInstance();
-
-        if ($app?->isMongoDbDefault()) {
-            $mongo = $app->mongo();
-            $product = $mongo->findOne('products', ['_id' => new \MongoDB\BSON\ObjectId($id)]);
-            if (!$product) {
-                return Response::json(['success' => false], 404);
-            }
-
-            $newStatus = ($product['status'] === 'published') ? 'draft' : 'published';
-            $mongo->updateOne('products', ['_id' => new \MongoDB\BSON\ObjectId($id)], ['status' => $newStatus]);
-
-            return Response::json(['success' => true, 'status' => $newStatus]);
-        }
-
         $product = Product::find($id);
         if (!$product) {
             return Response::json(['success' => false], 404);

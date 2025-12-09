@@ -37,12 +37,7 @@ class DashboardController
     private function getDashboardData(): array
     {
         $app = Application::getInstance();
-        
-        // Check if MongoDB is default
-        if ($app?->isMongoDbDefault()) {
-            return $this->getMongoStats();
-        }
-        
+
         $db = $app?->db();
         
         if ($db === null) {
@@ -92,51 +87,6 @@ class DashboardController
             'products' => [
                 'low_stock' => $lowStockProducts,
                 'top_selling' => $topProducts,
-            ],
-            'recent_orders' => [],
-        ];
-    }
-
-    /**
-     * Get MongoDB stats
-     */
-    private function getMongoStats(): array
-    {
-        $app = Application::getInstance();
-        $mongo = $app?->mongo();
-        
-        if ($mongo === null) {
-            return $this->getEmptyStats();
-        }
-        
-        // Count orders
-        $totalOrders = $mongo->count('orders');
-        $totalCustomers = $mongo->count('users', ['status' => 'active']);
-        $totalProducts = $mongo->count('products');
-        
-        return [
-            'revenue' => [
-                'today' => 0,
-                'week' => 0,
-                'month' => 0,
-                'year' => 0,
-            ],
-            'orders' => [
-                'total' => $totalOrders,
-                'pending' => 0,
-                'processing' => 0,
-                'shipped' => 0,
-                'delivered' => 0,
-                'cancelled' => 0,
-                'today' => 0,
-            ],
-            'customers' => [
-                'total' => $totalCustomers,
-            ],
-            'products' => [
-                'low_stock' => [],
-                'top_selling' => [],
-                'total' => $totalProducts,
             ],
             'recent_orders' => [],
         ];

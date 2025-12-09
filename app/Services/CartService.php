@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Cart;
-use App\Models\MongoCart;
 use App\Models\Product;
 use Core\Session;
 use Core\Application;
@@ -27,23 +26,10 @@ class CartService
     }
 
     /**
-     * Get or create cart for current user/session
-     *
-     * Returns either App\Models\Cart (SQL) or App\Models\MongoCart (MongoDB) depending on configuration.
-     *
-     * @return Cart|MongoCart
+     * Get or create cart for current user/session using the SQL-backed Cart model
      */
-    public function getCart()
+    public function getCart(): Cart
     {
-        $app = Application::getInstance();
-
-        // Use MongoCart when MongoDB is default
-        if ($app?->isMongoDbDefault()) {
-            $userId = $this->session?->get('user_id');
-            $sessionId = $this->getSessionId();
-            return new MongoCart($sessionId, $userId !== null ? (int) $userId : null);
-        }
-
         $userId = $this->session?->get('user_id');
 
         if ($userId !== null) {
@@ -77,14 +63,7 @@ class CartService
     public function getCartContents(): array
     {
         $cart = $this->getCart();
-
-        // If using MongoCart, itemsWithProducts returns array similar to SQL path
-        if ($cart instanceof MongoCart) {
-            $items = $cart->itemsWithProducts();
-        } else {
-            // SQL Cart model
-            $items = $cart->itemsWithProducts();
-        }
+        $items = $cart->itemsWithProducts();
 
         $cartItems = [];
         $subtotal = 0.0;
@@ -165,7 +144,7 @@ class CartService
             return ['success' => false, 'message' => 'Invalid product or quantity'];
         }
 
-        // Check stock & product availability using StockService (supports MongoDB-aware implementation)
+        // Check stock & product availability using StockService
         if (!$this->stockService->hasStock($productId, $quantity)) {
             // Try to get available stock for message
             $available = 0;
@@ -173,18 +152,6 @@ class CartService
                 $product = Product::find($productId);
                 if ($product !== null) {
                     $available = $product->attributes['stock'] ?? 0;
-                } else {
-                    // If Product::find failed (Mongo), try Application mongo directly
-                    $app = Application::getInstance();
-                    if ($app?->isMongoDbDefault()) {
-                        try {
-                            $mongo = $app->mongo();
-                            $doc = $mongo->findOne('products', ['_id' => new \MongoDB\BSON\ObjectId((string)$productId)]);
-                            $available = (int) ($doc['stock'] ?? 0);
-                        } catch (\Throwable $e) {
-                            $available = 0;
-                        }
-                    }
                 }
             } catch (\Throwable $e) {
                 $available = 0;
@@ -329,7 +296,7 @@ class CartService
             // Validate product exists and is published
             $valid = true;
             try {
-                // rely on stockService which supports Mongo/SQL
+                // Rely on stockService for validation
                 if (!$this->stockService->hasStock($productId, $quantity)) {
                     $valid = false;
                     $errors[] = "Insufficient stock for product {$productId}";
@@ -362,45 +329,6 @@ class CartService
      */
     public function mergeGuestCart(int $userId): void
     {
-        $app = Application::getInstance();
-
-        if ($app?->isMongoDbDefault()) {
-            // MongoDB merge: find guest cart by session_id and merge items into user cart
-            $sessionId = $this->session?->get('cart_session_id');
-            if (empty($sessionId)) {
-                return;
-            }
-
-            $mongo = $app->mongo();
-            $guest = $mongo->findOne('carts', ['session_id' => $sessionId, 'user_id' => null]);
-            if ($guest === null) {
-                return;
-            }
-
-            // get or create user cart
-            $userCart = new MongoCart('', $userId);
-            $guestItems = $guest['items'] ?? [];
-
-            foreach ($guestItems as $it) {
-                $pid = (string) ($it['product_id'] ?? '');
-                $qty = (int) ($it['quantity'] ?? 0);
-                $variant = $it['variant_id'] ?? null;
-                if (!empty($pid) && $qty > 0) {
-                    $userCart->addItem($pid, $qty, $variant);
-                }
-            }
-
-            // delete guest cart doc
-            try {
-                $mongo->deleteOne('carts', ['_id' => $guest['_id']]);
-            } catch (\Throwable $e) {
-                // ignore
-            }
-
-            return;
-        }
-
-        // SQL fallback - reuse existing Cart model merge
         Cart::mergeGuestCart($userId, $this->getSessionId());
     }
 

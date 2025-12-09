@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Enums\UserRole;
 use Core\Application;
 use Core\Database;
-use Core\MongoDB;
-use MongoDB\BSON\UTCDateTime;
 
 /**
  * Authentication Service
@@ -20,13 +18,6 @@ use MongoDB\BSON\UTCDateTime;
 class AuthService
 {
     private ?Database $db = null;
-    private ?MongoDB $mongo = null;
-
-    private function isMongoDb(): bool
-    {
-        $app = Application::getInstance();
-        return $app?->isMongoDbDefault() ?? false;
-    }
 
     private function db(): Database
     {
@@ -38,34 +29,14 @@ class AuthService
         return $this->db;
     }
 
-    private function mongo(): MongoDB
-    {
-        if ($this->mongo === null) {
-            $app = Application::getInstance();
-            if ($app !== null) $this->mongo = $app->mongo();
-        }
-        if ($this->mongo === null) throw new \RuntimeException('MongoDB connection not available');
-        return $this->mongo;
-    }
-
     /**
      * Attempt login with email & password
      */
     public function attempt(string $email, string $password, bool $remember = false): array
     {
-        $user = null;
-
-        if ($this->isMongoDb()) {
-            $mongoUser = $this->mongo()->findOne('users', ['email' => $email]);
-            if ($mongoUser === null || !password_verify($password, $mongoUser['password'] ?? '')) {
-                return ['success' => false, 'message' => 'Invalid email or password.'];
-            }
-            $user = User::fromMongo($mongoUser); // Convert MongoDB document to User model
-        } else {
-            $user = User::authenticate($email, $password);
-            if ($user === null) {
-                return ['success' => false, 'message' => 'Invalid email or password.'];
-            }
+        $user = User::authenticate($email, $password);
+        if ($user === null) {
+            return ['success' => false, 'message' => 'Invalid email or password.'];
         }
 
         $this->login($user, $remember);
@@ -116,15 +87,10 @@ class AuthService
     {
         $roleData = null;
 
-        if ($this->isMongoDb()) {
-            $roleData = $this->mongo()->findOne('roles', ['name' => UserRole::CUSTOMER->value]);
-            if ($roleData !== null) $roleData['id'] = $roleData['_id'] ?? $roleData['id'];
-        } else {
-            $roleData = $this->db()->selectOne(
-                "SELECT id FROM roles WHERE name = ?",
-                [UserRole::CUSTOMER->value]
-            );
-        }
+        $roleData = $this->db()->selectOne(
+            "SELECT id FROM roles WHERE name = ?",
+            [UserRole::CUSTOMER->value]
+        );
 
         if ($roleData === null) {
             return ['success' => false, 'message' => 'Registration is not available at this time.'];
@@ -183,20 +149,10 @@ class AuthService
 
     public function verifyEmail(string $token): array
     {
-        $verification = null;
-
-        if ($this->isMongoDb()) {
-            $cutoffDate = new \DateTime('-24 hours');
-            $verification = $this->mongo()->findOne('email_verifications', [
-                'token' => $token,
-                'created_at' => ['$gt' => $cutoffDate->format('Y-m-d H:i:s')]
-            ]);
-        } else {
-            $verification = $this->db()->selectOne(
-                "SELECT * FROM email_verifications WHERE token = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-                [$token]
-            );
-        }
+        $verification = $this->db()->selectOne(
+            "SELECT * FROM email_verifications WHERE token = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+            [$token]
+        );
 
         if ($verification === null) {
             return ['success' => false, 'message' => 'This verification link is invalid or has expired.'];
@@ -207,11 +163,7 @@ class AuthService
 
         $user->markEmailAsVerified();
 
-        if ($this->isMongoDb()) {
-            $this->mongo()->deleteOne('email_verifications', ['user_id' => $verification['user_id']]);
-        } else {
-            $this->db()->delete('email_verifications', ['user_id' => $verification['user_id']]);
-        }
+        $this->db()->delete('email_verifications', ['user_id' => $verification['user_id']]);
 
         return ['success' => true, 'message' => 'Email verified successfully.'];
     }
@@ -220,21 +172,12 @@ class AuthService
     {
         $token = bin2hex(random_bytes(32));
 
-        if ($this->isMongoDb()) {
-            $this->mongo()->deleteMany('email_verifications', ['user_id' => $user->getKey()]);
-            $this->mongo()->insertOne('email_verifications', [
-                'user_id' => $user->getKey(),
-                'token' => $token,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        } else {
-            $this->db()->delete('email_verifications', ['user_id' => $user->getKey()]);
-            $this->db()->insert('email_verifications', [
-                'user_id' => $user->getKey(),
-                'token' => $token,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
+        $this->db()->delete('email_verifications', ['user_id' => $user->getKey()]);
+        $this->db()->insert('email_verifications', [
+            'user_id' => $user->getKey(),
+            'token' => $token,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
 
         return true;
     }
