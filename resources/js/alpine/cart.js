@@ -25,13 +25,6 @@ export function initCartStore() {
       isLoading: false,
 
       /**
-       * Initialize cart from localStorage
-       */
-      init() {
-        this.items = getItem(CART_STORAGE_KEY, []);
-      },
-
-      /**
        * Add a product to the cart
        * @param {object} product - Product to add
        * @param {number} qty - Quantity to add
