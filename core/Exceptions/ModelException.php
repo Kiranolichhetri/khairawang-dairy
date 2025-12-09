@@ -7,11 +7,11 @@ namespace Core\Exceptions;
 use Exception;
 
 /**
- * Container Exception
+ * Model Exception
  * 
- * Thrown when a dependency container operation fails.
+ * Thrown when a model operation fails.
  */
-class ContainerException extends Exception
+class ModelException extends Exception
 {
 }
 

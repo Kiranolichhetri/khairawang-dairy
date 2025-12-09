@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Exceptions;
 
-class AuthorizationException extends HttpException
+class AuthenticationException extends HttpException
 {
     public function __construct(string $message = "Unauthorized")
     {
