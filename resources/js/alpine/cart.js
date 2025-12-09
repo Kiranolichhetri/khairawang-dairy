@@ -16,17 +16,13 @@ const SHIPPING_COST = 100;
  */
 export function initCartStore() {
   document.addEventListener('alpine:init', () => {
+    // Load items from localStorage before creating the store
+    const savedItems = getItem(CART_STORAGE_KEY, []);
+    
     Alpine.store('cart', {
-      items: [],
+      items: savedItems,
       isOpen: false,
       isLoading: false,
-
-      /**
-       * Initialize cart from localStorage
-       */
-      init() {
-        this.items = getItem(CART_STORAGE_KEY, []);
-      },
 
       /**
        * Add a product to the cart
